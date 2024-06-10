@@ -6,6 +6,7 @@ import * as ExcelJS from 'exceljs';
 @Controller('excel')
 export class AppController {
   constructor(private readonly appService: AppService) { }
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
@@ -24,11 +25,13 @@ export class AppController {
         // Read the first column (PageId) from the first sheet
         if (sheet.name === 'All Pages') {
           const pageIds = [];
-          for (let row = 3; row <= sheet.rowCount; row++) {
+          for (let row = 4; row <= sheet.rowCount; row++) {
             const cell = sheet.getCell(`C${row}`);
-            pageIds.push(cell.value);
+            if (cell.value !== null && cell.value !== undefined) {
+              pageIds.push(cell.value);
+            }
           }
-          console.log(`PageIds: ${pageIds}`); 
+          console.log(`PageIds: ${pageIds}`);
         }
       });
 
