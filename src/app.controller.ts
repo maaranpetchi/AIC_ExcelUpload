@@ -2,10 +2,13 @@ import { Controller, HttpException, HttpStatus, Post, UploadedFile, UseIntercept
 import { AppService } from './app.service';
 import { FileInterceptor } from '@nestjs/platform-express/multer';
 import * as ExcelJS from 'exceljs';
+import { Inject, Injectable } from '@nestjs/common';
+import { Pool } from 'pg';
+import { log } from 'console';
 
 @Controller('excel')
 export class AppController {
-  constructor(private readonly appService: AppService) { }
+  constructor(private readonly appService: AppService, @Inject('PG_POOL') private readonly pool: Pool) { }
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -19,19 +22,30 @@ export class AppController {
       console.log(sheets, "Sheets");
 
       // Loop through each sheet
-      sheets.forEach((sheet) => {
+      sheets.forEach(async (sheet) => {
         console.log(`Sheet name: ${sheet.name}`);
 
         // Read the first column (PageId) from the first sheet
         if (sheet.name === 'All Pages') {
-          const pageIds = [];
+          const PGS = [];
           for (let row = 4; row <= sheet.rowCount; row++) {
             const cell = sheet.getCell(`C${row}`);
-            if (cell.value !== null && cell.value !== undefined) {
-              pageIds.push(cell.value);
+            if (cell.value!== null && cell.value!== undefined) {
+              PGS.push(cell.value);
             }
           }
-          console.log(`PageIds: ${pageIds}`);
+          console.log(`PG: ${PGS}`);
+
+          // Insert PG into t_pg table
+          for (const PG of PGS) {
+            console.log(PG,"pgValue");
+            
+            const query = {
+              text: `INSERT INTO public."t-PG" ("PG") VALUES ($1)`,
+              values: [PG],
+            };
+            await this.pool.query(query);
+          }
         }
       });
 

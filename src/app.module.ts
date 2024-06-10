@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { pgPoolProvider } from './pg.pool.provider';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,pgPoolProvider],
 })
 export class AppModule {
 
