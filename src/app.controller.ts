@@ -5,50 +5,60 @@ import * as ExcelJS from 'exceljs';
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { log } from 'console';
-
 @Controller('excel')
 export class AppController {
   constructor(private readonly appService: AppService, @Inject('PG_POOL') private readonly pool: Pool) { }
-
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     try {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(file.buffer);
-
       const sheets = workbook.worksheets;
-
       console.log(sheets, "Sheets");
-
       // Loop through each sheet
       sheets.forEach(async (sheet) => {
         console.log(`Sheet name: ${sheet.name}`);
-
         // Read the first column (PageId) from the first sheet
         if (sheet.name === 'All Pages') {
           const PGS = [];
           for (let row = 4; row <= sheet.rowCount; row++) {
             const cell = sheet.getCell(`C${row}`);
-            if (cell.value!== null && cell.value!== undefined) {
+            if (cell.value !== null && cell.value !== undefined) {
               PGS.push(cell.value);
             }
           }
           console.log(`PG: ${PGS}`);
-
           // Insert PG into t_pg table
           for (const PG of PGS) {
-            console.log(PG,"pgValue");
-            
-            const query = {
+            console.log(PG, "pgValue");
+            const t_PGquery = {
               text: `INSERT INTO public."t-PG" ("PG") VALUES ($1)`,
               values: [PG],
             };
-            await this.pool.query(query);
+            await this.pool.query(t_PGquery);
+          }
+        }
+        if (sheet.name === 'All Cols') {
+          const Cols = [];
+          for (let row = 4; row <= sheet.rowCount; row++) {
+            const cell = sheet.getCell(`C${row}`);
+            if (cell.value !== null && cell.value !== undefined) {
+              Cols.push(cell.value);
+            }
+          }
+          console.log(`PG: ${Cols}`);
+          // Insert PG into t-col table
+          for (const Col of Cols) {
+            console.log(Col, "ColValue");
+            const t_Colquery = {
+              text: `INSERT INTO public."t-Col" ("Col") VALUES ($1)`,
+              values: [Col],
+            };
+            await this.pool.query(t_Colquery);
           }
         }
       });
-
       // Return a success response
       return { message: 'Excel file uploaded successfully' };
     } catch (error) {
