@@ -78,8 +78,22 @@ export class AppController {
           const richTextValue = b1Cell.value as ExcelJS.CellRichTextValue;
           const text = richTextValue.richText.slice(1).map((item) => item.text).join('');
           console.log(text, "BCEllValues");
+          
+          if (sheet.name === 'All Pages') {
+            const d3Cell = sheet.getCell('D3');
+            if (d3Cell.value !== null && d3Cell.value !== undefined) {
+              const d3Value = d3Cell.value;
+              const c3Cell = sheet.getCell('C3');
+              if (c3Cell.value !== null && c3Cell.value !== undefined) {
+                const c3Value = c3Cell.value;
+                console.log(`D3 value: ${d3Value}, C3 value: ${c3Value}`);
+                // Do something with the values
+              }
+            }
+          }
+          
           if (text === sheet.name) {
-   
+
             const bColumnValues = [];
             for (let row = 3; row <= sheet.lastRow.number; row++) {
               const cell = sheet.getCell(`B${row}`);
