@@ -5,6 +5,7 @@ import * as ExcelJS from 'exceljs';
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { log } from 'console';
+import { TextEncoderStream } from 'node:stream/web';
 @Controller('excel')
 export class AppController {
   SheetPageId: any;
@@ -15,7 +16,7 @@ export class AppController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new ExcelJS.Workbook(); ``
       await workbook.xlsx.load(file.buffer);
       const sheets = workbook.worksheets;
       // Loop through each sheet
@@ -46,7 +47,7 @@ export class AppController {
           }
         }
         if (sheet.name === 'All Cols') {
-          console.log("ALL COLS");
+          //          //          //          console.log("ALL COLS");
           const Cols = [];
           for (let row = 4; row <= sheet.rowCount; row++) {
             const cell = sheet.getCell(`C${row}`);
@@ -71,41 +72,39 @@ export class AppController {
             }
           }
         }
-
-        if(sheet.name === 'All Pages' || sheet.name === 'All Cols' || sheet.name === 'All Tokens') {
         const b1Cell = sheet.getCell('B1');
         if (b1Cell.value && typeof b1Cell.value === 'object' && 'richText' in b1Cell.value) {
           const richTextValue = b1Cell.value as ExcelJS.CellRichTextValue;
-          const text = richTextValue.richText.slice(1).map((item) => item.text).join('');
-          console.log(text, "BCEllValues");
-          
-          if (sheet.name === 'All Pages') {
-            const d3Cell = sheet.getCell('D3');
-            if (d3Cell.value !== null && d3Cell.value !== undefined) {
-              const d3Value = d3Cell.value;
-              const c3Cell = sheet.getCell('C3');
-              if (c3Cell.value !== null && c3Cell.value !== undefined) {
-                const c3Value = c3Cell.value;
-                console.log(`D3 value: ${d3Value}, C3 value: ${c3Value}`);
-                // Do something with the values
+          const PageName = richTextValue.richText.slice(1).map((item) => item.text).join('');
+          if ((PageName === sheet.name) && (sheet.name !== "All Profiles") && (sheet.name !== "All Cats") && (PageName !== "All Profiles") && (PageName !== "All Cats")) {
+            //          console.log(sheet.name, "SheetName");
+            //          console.log(PageName,"PageName");
+            if (PageName === sheet.name) {
+              const b3Cell = sheet.getCell('B3');
+              //            console.log(b3Cell.value,"B3CellValue");
+              if (b3Cell.value && b3Cell.value.toString().startsWith('Row*')) {
+                //              console.log(b3Cell.value, "Matched Value");
+                const bCells = [];
+                for (let row = 4; row <= sheet.rowCount; row++) {
+                  const bCell = sheet.getCell(`B${row}`);
+                  if (bCell.value !== null && bCell.value !== undefined) {
+                    if (typeof bCell.value === 'object' && 'richText' in bCell.value) {
+                      const text = bCell.value.richText.map(rt => rt.text).join('');
+                      bCells.push(text);
+                    } else {
+                      bCells.push(bCell.value);
+                    }
+                  }
+                }
+                console.log(PageName,"Page Name");
+                console.log(bCells, "B Cells Data");
+                // Add your code here to process the B cells data
               }
             }
           }
-          
-          if (text === sheet.name) {
-
-            const bColumnValues = [];
-            for (let row = 3; row <= sheet.lastRow.number; row++) {
-              const cell = sheet.getCell(`B${row}`);
-              if (cell.value!== null && cell.value!== undefined) {
-                bColumnValues.push(cell.value);
-              }
-            }
-            console.log(bColumnValues,"BColumnValues"); // Example output
-          }
-        }    
+        }
       }
-      });
+      );
       // Return a success response
       return { message: 'Excel file uploaded successfully' };
     } catch (error) {
