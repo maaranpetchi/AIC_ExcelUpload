@@ -17,29 +17,27 @@ export class AppController {
       // Define the pattern to search for
       const pageIdPattern = /Page Id\*/i;
       const colIdPattern = /Col Id\*/i;
-
+      const pageNamePattern = /Page Name\*/i;
       sheets.forEach(async sheet => {
-
         if (sheet.name === "All Pages") {
-          for (let rowIndex = 1; rowIndex <= sheet.lastRow.number; rowIndex++) {
-            for (let colIndex = 1; colIndex <= sheet.lastColumn.number; colIndex++) {
-              const cell = sheet.getCell(rowIndex, colIndex);
+          //To extract the page ID values, need to iterate through each cell in the "All Pages" sheet and compare its value with the "Page Id*" pattern.
+          for (let sheetRowIndex = 1; sheetRowIndex <= sheet.lastRow.number; sheetRowIndex++) {
+            for (let sheetColIndex = 1; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
+              const cell = sheet.getCell(sheetRowIndex, sheetColIndex);
               if (cell.value && pageIdPattern.test(cell.value.toString())) {
                 const pgcolumnValues = [];
                 for (let rowIdx = 1; rowIdx <= sheet.lastRow.number; rowIdx++) {
-                  const rowCell = sheet.getCell(rowIdx, colIndex);
+                  const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                   const value = rowCell.value;
                   if (value !== null && value !== undefined) {
                     pgcolumnValues.push(value);
                   }
                 }
                 console.log(pgcolumnValues, "PgColumnValues");
-
                 // Remove { richText: [ [Object], [Object] ] } objects from pgcolumnValues
                 const filteredPgcolumnValues = pgcolumnValues.filter(value => {
                   return typeof value === 'string' || typeof value === 'number';
                 });
-
                 const filteredPageIdColumnValues = filteredPgcolumnValues.slice(1);
                 console.log(filteredPageIdColumnValues, "filteredPgValues");
                 for (const PG of filteredPageIdColumnValues) {
@@ -69,13 +67,13 @@ export class AppController {
           }
         }
         if (sheet.name === "All Cols") {
-          for (let rowIndex = 1; rowIndex <= sheet.lastRow.number; rowIndex++) {
-            for (let colIndex = 1; colIndex <= sheet.lastColumn.number; colIndex++) {
-              const cell = sheet.getCell(rowIndex, colIndex);
+          for (let sheetRowIndex = 1; sheetRowIndex <= sheet.lastRow.number; sheetRowIndex++) {
+            for (let sheetColIndex = 1; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
+              const cell = sheet.getCell(sheetRowIndex, sheetColIndex);
               if (cell.value && colIdPattern.test(cell.value.toString())) {
                 const colcolumnValues = [];
                 for (let rowIdx = 1; rowIdx <= sheet.lastRow.number; rowIdx++) {
-                  const rowCell = sheet.getCell(rowIdx, colIndex);
+                  const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                   const value = rowCell.value;
                   if (value !== null && value !== undefined) {
                     colcolumnValues.push(value);
@@ -85,7 +83,6 @@ export class AppController {
                 const filteredColColumnValues = colcolumnValues.filter(value => {
                   return typeof value === 'string' || typeof value === 'number';
                 });
-
                 const filteredColIdColumnValues = filteredColColumnValues.slice(1);
                 console.log(filteredColIdColumnValues, "filteredColumnValues");
                 for (const Col of filteredColIdColumnValues) {
@@ -110,6 +107,49 @@ export class AppController {
                     await this.pool.query(updateColQuery);
                   }
                 }
+              }
+            }
+          }
+        }
+        // console.log(sheet.name, "Outside SheetName");
+        if (sheet.name === "All Pages") {
+          // To extract the page ID values, need to iterate through each cell in the "All Pages" sheet and compare its value with the "Page Id*" pattern.
+          for (let sheetRowIndex = 1; sheetRowIndex <= sheet.lastRow.number; sheetRowIndex++) {
+            for (let sheetColIndex = 1; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
+              const cell = sheet.getCell(sheetRowIndex, sheetColIndex);
+              if (cell.value && pageNamePattern.test(cell.value.toString())) {
+                const pgNameColumnValues = [];
+                for (let rowIdx = 1; rowIdx <= sheet.lastRow.number; rowIdx++) {
+                  const rowCell = sheet.getCell(rowIdx, sheetColIndex);
+                  const value = rowCell.value;
+                  if (value!== null && value!== undefined) {
+                    pgNameColumnValues.push(value);
+                  }
+                }
+                // console.log(pgNameColumnValues, "PgNameColumnValues");
+                // Remove { richText: [ [Object], [Object] ] } objects from pgNameColumnValues
+                const filteredPgNameColumnValues = pgNameColumnValues.filter(value => {
+                  return typeof value === 'string' || typeof value === 'number';
+                });
+                const filteredPageNameColumnValues = filteredPgNameColumnValues.slice(1);
+                console.log(filteredPageNameColumnValues, "filteredPgNameValues");
+        
+                // Iterate through each sheet and check if the sheet name matches any value in filteredPageNameColumnValues
+                workbook.worksheets.forEach((ws) => {
+                  if (filteredPageNameColumnValues.includes(ws.name)) {
+                    console.log(`Sheet name ${ws.name} matches a value in filteredPageNameColumnValues`);
+                    // Search for the value under PageId* cell column in All Pages Sheet
+                    for (let colIndex = 1; colIndex <= sheet.lastColumn.number; colIndex++) {
+                      const pageIdCell = sheet.getCell(sheetRowIndex, colIndex);
+                      if (pageIdCell.value && pageIdPattern.test(pageIdCell.value.toString())) {
+                        const pageId = pageIdCell.value;
+                        console.log(`Page ID for ${ws.name} is ${pageId}`);
+                        // Process the page ID here
+                        //...
+                      }
+                    }
+                  }
+                });
               }
             }
           }
