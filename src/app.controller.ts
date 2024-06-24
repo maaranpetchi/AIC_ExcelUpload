@@ -4,13 +4,11 @@ import * as ExcelJS from 'exceljs';
 import { Inject } from '@nestjs/common';
 import { Pool } from 'pg';
 import { constants } from './constants';
-
 @Controller('excel')
 export class AppController {
   constructor(
     @Inject('PG_POOL') private readonly pool: Pool
   ) {}
-
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
@@ -18,7 +16,6 @@ export class AppController {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(file.buffer);
       const sheets = workbook.worksheets;
-
       for (const sheet of sheets) {
         if (constants.sheetNames.includes(sheet.name)) {
           console.log(`Processing sheet: ${sheet.name}`);
@@ -38,7 +35,6 @@ export class AppController {
                     }
                   }
                   console.log(pgcolumnValues, "PgColumnValues");
-
                   // Here you can execute your PostgreSQL queries
                   // for (const PG of pgcolumnValues.slice(1)) {
                   //   const t_PGquery = {
@@ -67,7 +63,6 @@ export class AppController {
                     }
                   }
                   console.log(colcolumnValues, "ColColumnValues");
-
                   // Here you can execute your PostgreSQL queries
                   // for (const Col of colcolumnValues.slice(1)) {
                   //   const t_Colquery = {
@@ -94,35 +89,28 @@ export class AppController {
             }
             if (headerRowIndex !== -1) break;
           }
-
           if (headerRowIndex === -1) {
             console.log(`Header row not found in sheet ${sheet.name}`);
             continue; // Skip to the next sheet
           }
-
           const headerRow = sheet.getRow(headerRowIndex);
-
           // Process each column to find specific pattern in the header
           let rowPatternFound = false;
           for (let sheetColIndex = 1; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
             const cell = headerRow.getCell(sheetColIndex);
-
             // Check if the cell value matches your pattern for headers (e.g., 'Row*')
             if (cell.value && constants.rowIdPattern.test(cell.value.toString())) {
               rowPatternFound = true;
               const rowColumnValues = [];
-
               // Collect all values in the column starting from the row after header
               for (let rowIdx = headerRowIndex + 1; rowIdx <= sheet.lastRow.number; rowIdx++) {
                 const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                 const value = rowCell.value;
-
                 if (value !== null && value !== undefined) {
                   rowColumnValues.push(value);
                 }
               }
               console.log(rowColumnValues);
-
               // Example PostgreSQL insertion code (uncomment and adjust as needed)
               // for (const rowValue of rowColumnValues) {
               //   const query = {
@@ -133,13 +121,11 @@ export class AppController {
               // }
             }
           }
-
           if (!rowPatternFound) {
             console.log(`Row pattern not found in any columns of sheet ${sheet.name}`);
           }
         }
       }
-
       return { message: 'Excel file processed successfully' };
     } catch (error) {
       console.error(error);
