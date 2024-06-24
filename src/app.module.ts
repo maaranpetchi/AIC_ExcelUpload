@@ -3,7 +3,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { pgPoolProvider } from './pg.pool.provider';
-
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -18,11 +17,9 @@ import { pgPoolProvider } from './pg.pool.provider';
       ssl:false
     }),
     TypeOrmModule.forFeature([]),
-
   ],
   controllers: [AppController],
   providers: [AppService,pgPoolProvider],
 })
 export class AppModule {
-
 }
