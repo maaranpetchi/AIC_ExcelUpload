@@ -6,9 +6,11 @@ export const constants = {
     rowIdPattern: /Row\*/i,
     tokenPattern: /Token\*/i,
     rowType: /Row Type/i,
+    rowStatus: /Row Status/i,
     allPages: "All Pages",
     allcols: "All Cols",
     allTokens: "All Tokens",
+    sectionHead: "Section-Head",
     sheetNames: ["All Pages", "All Cols", "All Tokens", "All Languages", "All Regions", "All Suppliers", "All Models", "All Units", "All Labels"],
     nestedColumns: {
       "All Pages": /Page Name\*/,
