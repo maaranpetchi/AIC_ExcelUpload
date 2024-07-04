@@ -8,12 +8,21 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express/multer';
 import * as ExcelJS from 'exceljs';
-import { Inject } from '@nestjs/common';
-import { Pool } from 'pg';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { constants } from './constants';
+import { TPg } from './entities/TPg';
+import { TCol } from './entities/TCol';
+import { TRow } from './entities/TRow';
+
 @Controller('excel')
 export class AppController {
-  constructor(@Inject('PG_POOL') private readonly pool: Pool) {}
+  constructor(
+    @InjectRepository(TPg) private readonly tpgRepository: Repository<TPg>,
+    @InjectRepository(TCol) private readonly tColRepository: Repository<TCol>,
+    @InjectRepository(TRow) private readonly tRowRepository: Repository<TRow>,
+  ) {}
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
@@ -21,39 +30,93 @@ export class AppController {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(file.buffer);
       const sheets = workbook.worksheets;
+      const pageIdToNameMap: { [pageName: string]: string } = {};
 
+      // //--Col Id to Col name mapping
+      // const colData = {}; // Object to store Col ID, Page Type, Page ID, and Col Name
+
+      // // Process the 'All Cols' sheet first
+      // const allColsSheet = sheets.find(sheet => sheet.name === constants.allcols);
+      // if (!allColsSheet) {
+      //   throw new Error(`Sheet with name ${constants.allcols} not found`);
+      // }
+
+      // let colIdIndex = constants.index;
+      // let pageTypeIndex = constants.index;
+      // let pageIdIndex = constants.index;
+      // let colNameIndex = constants.index;
+      // let headerRowIndex = constants.index;
+
+      // // Find the indices of the headers
+      // for (let rowIndex = constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+      //   const row = allColsSheet.getRow(rowIndex);
+      //   for (let colIndex = constants.one; colIndex <= row.cellCount; colIndex++) {
+      //     const cellValue = row.getCell(colIndex).value?.toString();
+      //     if (cellValue && constants.colIdPattern.test(cellValue)) {
+      //       colIdIndex = colIndex;
+      //       headerRowIndex = rowIndex;
+      //     }
+      //     if (cellValue && constants.pageTypePattern.test(cellValue)) {
+      //       pageTypeIndex = colIndex;
+      //       headerRowIndex = rowIndex;
+      //     }
+      //     if (cellValue && constants.pageIdPattern.test(cellValue)) {
+      //       pageIdIndex = colIndex;
+      //       headerRowIndex = rowIndex;
+      //     }
+      //     if (cellValue && constants.colNamePattern.test(cellValue)) {
+      //       colNameIndex = colIndex;
+      //       headerRowIndex = rowIndex;
+      //     }
+      //   }
+      //   if (headerRowIndex !== constants.index) break; // Exit the loop once the header is found
+      // }
+
+      // if (
+      //   colIdIndex === constants.index ||
+      //   pageTypeIndex === constants.index ||
+      //   pageIdIndex === constants.index ||
+      //   colNameIndex === constants.index
+      // ) {
+      //   throw new Error('Required headers not found in the sheet');
+      // }
+
+      // // Read the data under the headers and store it in the object
+      // for (let rowIndex = headerRowIndex + constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+      //   const row = allColsSheet.getRow(rowIndex);
+      //   const colId = row.getCell(colIdIndex).value?.toString();
+      //   const pageType = row.getCell(pageTypeIndex).value?.toString();
+      //   const pageId = row.getCell(pageIdIndex).value?.toString();
+      //   const colName = row.getCell(colNameIndex).value?.toString();
+      //   if (colId && colName) {
+      //     colData[colId] = {
+      //       pageType,
+      //       pageId,
+      //       colName
+      //     };
+      //   }
+      // }
+
+      // console.log('Col Data:', colData);
+      
       for (const sheet of sheets) {
         if (constants.sheetNames.includes(sheet.name)) {
           console.log(`Processing sheet: ${sheet.name}`);
-          //--t-PG table
+
+          // Process 'All Pages' sheet
           if (sheet.name === constants.allPages) {
             // Initialize arrays to store page IDs and names
             const pageIds: string[] = [];
             const pageNames: string[] = [];
 
             // Iterate through each cell in the sheet
-            for (
-              let sheetRowIndex = 1;
-              sheetRowIndex <= sheet.lastRow.number;
-              sheetRowIndex++
-            ) {
-              for (
-                let sheetColIndex = 1;
-                sheetColIndex <= sheet.lastColumn.number;
-                sheetColIndex++
-              ) {
+            for (let sheetRowIndex = constants.one; sheetRowIndex <= sheet.lastRow.number; sheetRowIndex++) {
+              for (let sheetColIndex = constants.one; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
                 const cell = sheet.getCell(sheetRowIndex, sheetColIndex);
 
                 // Check for page ID pattern and populate pageIds array
-                if (
-                  cell.value &&
-                  constants.pageIdPattern.test(cell.value.toString())
-                ) {
-                  for (
-                    let rowIdx = 1;
-                    rowIdx <= sheet.lastRow.number;
-                    rowIdx++
-                  ) {
+                if (cell.value && constants.pageIdMandatoryPattern.test(cell.value.toString())) {
+                  for (let rowIdx = constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
                     const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                     const value = rowCell.value;
                     if (value !== null && value !== undefined) {
@@ -63,15 +126,8 @@ export class AppController {
                 }
 
                 // Check for page name pattern and populate pageNames array
-                if (
-                  cell.value &&
-                  constants.pageNamePattern.test(cell.value.toString())
-                ) {
-                  for (
-                    let rowIdx = 1;
-                    rowIdx <= sheet.lastRow.number;
-                    rowIdx++
-                  ) {
+                if (cell.value && constants.pageNamePattern.test(cell.value.toString())) {
+                  for (let rowIdx = constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
                     const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                     const value = rowCell.value;
                     if (value !== null && value !== undefined) {
@@ -82,302 +138,266 @@ export class AppController {
               }
             }
 
-            // Generate INSERT query to push into t-PG table
-              for (const PG of pageIds.slice(1)) {
-              const t_PGquery = {
-              text: `INSERT INTO public."t-PG" ("PG") VALUES ($1)`,
-              values: [PG],
-             };
-              await this.pool.query(t_PGquery);
-              }
-            console.log('Page ID', pageIds);
-
-            // Alternatively, create a key-value pair of page ID and page name
-            var pageIdToNameMap: { [pageName: string]: string } = {};
-            for (let i = 0; i < pageIds.length; i++) {
-              pageIdToNameMap[pageNames[i]] = pageIds[i];
+            // Save page IDs into the 'TPg' table
+            for (const PG of pageIds.slice(constants.one)) {
+              const tpgEntity = this.tpgRepository.create({ pg: PG });
+              await this.tpgRepository.save(tpgEntity);
             }
 
-            console.log('Page ID to Name Map:', pageIdToNameMap);
+            // Create a key-value pair of page ID and page name
+            for (let i = constants.zero; i < pageIds.length; i++) {
+              pageIdToNameMap[pageNames[i]] = pageIds[i];
+            }
           }
 
-          //--t-Col table
+          // Process 'All Cols' sheet
           if (sheet.name === constants.allcols) {
-            // Process 'All Cols' sheet
-            for (
-              let sheetRowIndex = 1;
-              sheetRowIndex <= sheet.lastRow.number;
-              sheetRowIndex++
-            ) {
-              for (
-                let sheetColIndex = 1;
-                sheetColIndex <= sheet.lastColumn.number;
-                sheetColIndex++
-              ) {
+            for (let sheetRowIndex = constants.one; sheetRowIndex <= sheet.lastRow.number; sheetRowIndex++) {
+              for (let sheetColIndex = constants.one; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
                 const cell = sheet.getCell(sheetRowIndex, sheetColIndex);
-                if (
-                  cell.value &&
-                  constants.colIdPattern.test(cell.value.toString())
-                ) {
-                  const colcolumnValues = [];
-                  for (
-                    let rowIdx = 1;
-                    rowIdx <= sheet.lastRow.number;
-                    rowIdx++
-                  ) {
+                if (cell.value && constants.colIdPattern.test(cell.value.toString())) {
+                  const colColumnValues = [];
+                  for (let rowIdx = constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
                     const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                     const value = rowCell.value;
                     if (value !== null && value !== undefined) {
-                      colcolumnValues.push(value);
+                      colColumnValues.push(value);
                     }
                   }
-                  console.log(colcolumnValues, 'ColColumnValues');
-                  // Here you can execute your PostgreSQL queries
-                  for (const Col of colcolumnValues.slice(1)) {
-                    const t_Colquery = {
-                      text: `INSERT INTO public."t-Col" ("Col") VALUES ($1)`,
-                      values: [Col],
-                    };
-                    await this.pool.query(t_Colquery);
+                  // Save col values into 'TCol' table
+                  for (const Col of colColumnValues.slice(constants.one)) {
+                    const newColEntity = this.tColRepository.create({ col: Col });
+                    await this.tColRepository.save(newColEntity);
                   }
                 }
               }
             }
           }
 
+          // Check if sheet name is a key in pageIdToNameMap
           if (sheet.name in pageIdToNameMap) {
             var pageId = pageIdToNameMap[sheet.name];
           }
 
-// Ensure pageId exists in the referenced table
-const checkPageIdQuery = {
-  text: 'SELECT 1 FROM public."t-PG" WHERE "PG" = $1',
-  values: [pageId],
-};
+          // Find existing page in 'TPg' table
+          const existingPage = await this.tpgRepository.findOne({ where: { pg: pageId } });
+          if (!existingPage) {
+            console.error(pageId + constants.pageIdError);
+            continue;
+          }
 
-try {
-  const res = await this.pool.query(checkPageIdQuery);
-  if (res.rowCount === 0) {
-    console.error(`Page-ID ${pageId} does not exist in the referenced table`);
-    continue; // Skip to the next sheet
-  }
-} catch (err) {
-  console.error(`Error checking Page-ID: ${err}`);
-  continue; // Skip to the next sheet
-}
+          // Find header row index based on specific constants
+          let headerRowIndex = constants.index;
+          for (let i = constants.one; i <= sheet.lastRow.number; i++) {
+            const row = sheet.getRow(i);
+            for (let j = constants.one; j <= row.cellCount; j++) {
+              const cell = row.getCell(j);
+              if (cell.value && constants.rowType.test(cell.value.toString())) {
+                headerRowIndex = i;
+                break;
+              }
+            }
+            if (headerRowIndex !== constants.index) break;
+          }
 
-// Dynamically find the header row for Row-ID and Row-Type
-let headerRowIndex = -1;
-for (let i = 1; i <= sheet.lastRow.number; i++) {
-  const row = sheet.getRow(i);
-  for (let j = 1; j <= row.cellCount; j++) {
-    const cell = row.getCell(j);
-    if (cell.value && constants.rowType.test(cell.value.toString())) {
-      headerRowIndex = i;
-      break;
-    }
-  }
-  if (headerRowIndex !== -1) break;
-}
+          // Handle error if headerRowIndex is still index constant
+          if (headerRowIndex === constants.index) {
+            console.log(constants.headerError + sheet.name);
+            continue; // Skip to the next sheet
+          }
 
-if (headerRowIndex === -1) {
-  console.log(`Header row not found in sheet ${sheet.name}`);
-  continue; // Skip to the next sheet
-}
+          // Retrieve header row
+          const headerRow = sheet.getRow(headerRowIndex);
 
-const headerRow = sheet.getRow(headerRowIndex);
+          // Initialize variables for column indices and nested column
+          let rowIdColumnIndex = constants.index;
+          let rowStatusColumnIndex = constants.index;
+          let nestedColumnStartIndex = constants.index;
+          let nestedColumnEndIndex = constants.index;
+          let nestedColumn = constants.nestedColumns[sheet.name];
 
-// Identify Row-ID, Row-Type, and nested columns
-let rowIdColumnIndex = -1;
-let rowStatusColumnIndex = -1;
-let nestedColumnStartIndex = -1;
-let nestedColumnEndIndex = -1;
-let nestedColumn = constants.nestedColumns[sheet.name];
+          // Iterate through header row to identify specific columns
+          for (let sheetColIndex = constants.one; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
+            const cell = headerRow.getCell(sheetColIndex);
+            if (cell.value) {
+              if (constants.rowIdPattern.test(cell.value.toString())) {
+                rowIdColumnIndex = sheetColIndex;
+              } else if (constants.rowStatus.test(cell.value.toString())) {
+                rowStatusColumnIndex = sheetColIndex;
+              } else if (nestedColumn && new RegExp(nestedColumn).test(cell.value.toString())) {
+                if (nestedColumnStartIndex === constants.index) {
+                  nestedColumnStartIndex = sheetColIndex;
+                }
+                nestedColumnEndIndex = sheetColIndex;
+              }
+            }
+          }
 
-for (let sheetColIndex = 1; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
-  const cell = headerRow.getCell(sheetColIndex);
-  if (cell.value) {
-    if (constants.rowIdPattern.test(cell.value.toString())) {
-      rowIdColumnIndex = sheetColIndex;
-    } else if (constants.rowStatus.test(cell.value.toString())) {
-      rowStatusColumnIndex = sheetColIndex;
-    } else if (nestedColumn && new RegExp(nestedColumn, 'i').test(cell.value.toString())) {
-      if (nestedColumnStartIndex === -1) {
-        nestedColumnStartIndex = sheetColIndex;
-      }
-      nestedColumnEndIndex = sheetColIndex;
-    }
-  }
-}
+          // Handle error if rowStatusColumnIndex is still index constant
+          if (rowStatusColumnIndex === constants.index) {
+            console.log(constants.rowStatusError + sheet.name);
+            continue; // Skip to the next sheet
+          }
 
-if (rowStatusColumnIndex === -1) {
-  console.log(`Row-Status column not found in sheet ${sheet.name}`);
-  continue; // Skip to the next sheet
-}
+          // Initialize arrays and objects to store previous rows and last row at level
+          let previousRows = [];
+          let lastRowAtLevel = {};
 
-// Array to keep track of previous rows' info for parent and sibling calculations
-let previousRows = [];
+          // Iterate through each row in the sheet
+          for (let rowIdx = headerRowIndex + constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
+            const row = sheet.getRow(rowIdx);
 
-// Object to keep track of the last row at each level and parent combination
-let lastRowAtLevel = {};
+            // Check if the row is empty
+            let isRowEmpty = true;
+            for (let colIdx = constants.one; colIdx <= row.cellCount; colIdx++) {
+              const cell = row.getCell(colIdx);
+              if (cell.value !== null && cell.value !== undefined && cell.value.toString().trim() !== '') {
+                isRowEmpty = false;
+                break;
+              }
+            }
 
-// Process rows
-for (let rowIdx = headerRowIndex + 1; rowIdx <= sheet.lastRow.number; rowIdx++) {
-  const row = sheet.getRow(rowIdx);
+            // Skip empty rows
+            if (isRowEmpty) {
+              continue;
+            }
 
-  // Check if the row is empty
-  let isRowEmpty = true;
-  for (let colIdx = 1; colIdx <= row.cellCount; colIdx++) {
-    const cell = row.getCell(colIdx);
-    if (cell.value !== null && cell.value !== undefined && cell.value.toString().trim() !== '') {
-      isRowEmpty = false;
-      break;
-    }
-  }
+            // Retrieve row ID and row status values
+            const rowIdCell = rowIdColumnIndex !== constants.index ? row.getCell(rowIdColumnIndex) : null;
+            const rowStatusCell = row.getCell(rowStatusColumnIndex);
+            const rowValue = rowIdCell ? rowIdCell.value : null;
+            const rowStatusValue = rowStatusCell ? rowStatusCell.value : null;
 
-  // Skip entirely empty rows
-  if (isRowEmpty) {
-    continue;
-  }
+            // Skip rows with no row value when row ID column index is valid
+            if (rowIdColumnIndex !== constants.index && (rowValue === null || rowValue === undefined)) {
+              continue;
+            }
 
-  const rowIdCell = rowIdColumnIndex !== -1 ? row.getCell(rowIdColumnIndex) : null;
-  const rowStatusCell = row.getCell(rowStatusColumnIndex);
-  const rowValue = rowIdCell ? rowIdCell.value : null;
-  const rowStatusValue = rowStatusCell ? rowStatusCell.value : null;
+            // Determine row level based on row status and nested columns
+            let rowLevel = constants.one;
+            if (rowStatusValue !== null && rowStatusValue !== undefined && rowStatusValue.toString() === constants.sectionHead) {
+              rowLevel = constants.zero;
+            } else if (nestedColumnStartIndex !== constants.index && nestedColumnEndIndex !== constants.index) {
+              for (let colIdx = nestedColumnStartIndex; colIdx <= nestedColumnEndIndex; colIdx++) {
+                const cell = row.getCell(colIdx);
+                if (cell.value) {
+                  rowLevel = colIdx - nestedColumnStartIndex + constants.one;
+                  break;
+                }
+              }
+            }
 
-  // Skip rows with Row column but no Row value
-  if (rowIdColumnIndex !== -1 && (rowValue === null || rowValue === undefined)) {
-    continue;
-  }
+            // Initialize parent and sibling row IDs
+            let parentRowId = null;
+            let siblingRowId = null;
 
-  let rowLevel = 1; // Default row level is 1
+            // Determine parent and sibling row IDs based on previous rows
+            for (let i = previousRows.length - constants.one; i >= constants.zero; i--) {
+              if (previousRows[i].rowLevel < rowLevel) {
+                parentRowId = previousRows[i].id;
+                break;
+              }
+            }
 
-  if (rowStatusValue !== null && rowStatusValue !== undefined && rowStatusValue.toString() === constants.sectionHead) {
-    rowLevel = 0;
-  } else if (nestedColumnStartIndex !== -1 && nestedColumnEndIndex !== -1) {
-    // Calculate rowLevel for non-section-head rows and even if rowType is null
-    for (let colIdx = nestedColumnStartIndex; colIdx <= nestedColumnEndIndex; colIdx++) {
-      const cell = row.getCell(colIdx);
-      if (cell.value) {
-        rowLevel = colIdx - nestedColumnStartIndex + 1;
-        break;
-      }
-    }
-  }
+            const lastRowKey = `${parentRowId}-${rowLevel}`;
+            if (lastRowAtLevel[lastRowKey]) {
+              siblingRowId = lastRowAtLevel[lastRowKey].id;
+            }
 
-  let parentRowId = null;
-  let siblingRowId = null;
+            let newRowId = null;
+            let newRowEntity;
 
-  // Determine parent-Row ID
-  for (let i = previousRows.length - 1; i >= 0; i--) {
-    if (previousRows[i].rowLevel < rowLevel) {
-      parentRowId = previousRows[i].id;
-      break;
-    }
-  }
+            // Create a new row entity based on row value or generate a new row value
+            if (rowValue !== null && rowValue !== undefined) {
+              newRowEntity = this.tRowRepository.create({
+                row: rowValue.toString(),
+                pg: existingPage,
+                rowLevel: rowLevel,
+                parentRow: parentRowId,
+              });
+            } else {
+              const generatedRowValue = await this.getNextRowValue(this.tRowRepository);
+              newRowEntity = this.tRowRepository.create({
+                row: generatedRowValue.toString(),
+                pg: existingPage,
+                rowLevel: rowLevel,
+                parentRow: parentRowId,
+              });
+            }
 
-  // Determine sibling-Row ID
-  const lastRowKey = `${parentRowId}-${rowLevel}`;
-  if (lastRowAtLevel[lastRowKey]) {
-    siblingRowId = lastRowAtLevel[lastRowKey].id;
-  }
+            try {
+              // Save the new row entity and retrieve the new row ID
+              const savedRowEntity = await this.tRowRepository.save(newRowEntity);
+              newRowId = savedRowEntity.row;
 
-  // Insert the current row and get the auto-generated ID
-  let newRowId = null;
-  let query;
-  if (rowValue !== null && rowValue !== undefined) {
-    query = {
-      text: `INSERT INTO public."t-Row" ("Row", "PG", "Share", "Inherit", "Row-Level", "Parent-Row", "Sibling-Row") 
-      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING "Row"`,
-      values: [
-        rowValue,
-        pageId,
-        null,
-        null,
-        rowLevel,
-        parentRowId,
-        siblingRowId,
-      ],
-    };
-  } else {
-    query = {
-      text: `INSERT INTO public."t-Row" ("PG", "Share", "Inherit", "Row-Level", "Parent-Row", "Sibling-Row") 
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING "Row"`,
-      values: [
-        pageId,
-        null,
-        null,
-        rowLevel,
-        parentRowId,
-        siblingRowId,
-      ],
-    };
-  }
+              // Handle case where newRowId is undefined
+              if (newRowId === undefined) {
+                console.error(constants.emptyRowError);
+                continue;
+              }
 
-  try {
-    const res = await this.pool.query(query);
-    newRowId = res.rows[0].Row;
+              // Update sibling row ID if siblingRowId is not null
+              if (siblingRowId !== null) {
+                await this.tRowRepository
+                  .createQueryBuilder()
+                  .update(TRow)
+                  .set({ siblingRow: newRowId })
+                  .where(constants.siblingRowCondition, { siblingRowId })
+                  .execute();
+              }
 
-    // Update the sibling-Row of the previous row at the same level
-    if (siblingRowId !== null) {
-      const updateSiblingQuery = {
-        text: 'UPDATE public."t-Row" SET "Sibling-Row" = $1 WHERE "Row" = $2',
-        values: [newRowId, siblingRowId],
-      };
-      try {
-        await this.pool.query(updateSiblingQuery);
-        console.log(`Updated Sibling-Row for Row ID ${siblingRowId} to ${newRowId}`);
-      } catch (err) {
-        console.error(`Error updating sibling row: ${err}`);
-      }
-    }
+              // Store current row details in previousRows and lastRowAtLevel objects
+              previousRows.push({
+                id: newRowId,
+                rowValue,
+                rowLevel,
+                parentRowId,
+                siblingRowId,
+              });
 
-    // Log the inserted row
-    if (rowValue !== null && rowValue !== undefined) {
-      console.log(
-        `Row: ${rowValue}, PG: ${pageId}, Row-Level: ${rowLevel}, Parent-Row: ${parentRowId}, Sibling-Row: ${siblingRowId}`,
-      );
-    } else {
-      console.log(
-        `PG: ${pageId}, Row-Level: ${rowLevel}, Parent-Row: ${parentRowId}, Sibling-Row: ${siblingRowId}`,
-      );
-    }
+              lastRowAtLevel[lastRowKey] = {
+                id: newRowId,
+                rowValue,
+                rowLevel,
+                parentRowId,
+              };
+            } catch (err) {
+              console.error(constants.rowError + err);
+              continue; // Skip to the next row in case of error
+            }
+          }
 
-    // Add current row info to previousRows array
-    previousRows.push({ id: newRowId, rowValue, rowLevel, parentRowId, siblingRowId });
-
-    // Update the last row at this level and parent combination
-    lastRowAtLevel[lastRowKey] = { id: newRowId, rowValue, rowLevel, parentRowId };
-
-  } catch (err) {
-    console.error(`Error inserting row: ${err}`);
-    continue; // Skip to the next row in case of error
-  }
-}
-
-// Update sibling-Row for the last row in each level
-for (let key in lastRowAtLevel) {
-  const row = lastRowAtLevel[key];
-  const updateQuery = {
-    text: 'UPDATE public."t-Row" SET "Sibling-Row" = NULL WHERE "Row" = $1',
-    values: [row.id],
-  };
-  try {
-    await this.pool.query(updateQuery);
-    console.log(`Set Sibling-Row to NULL for Row ID ${row.id}`);
-  } catch (err) {
-    console.error(`Error setting Sibling-Row to NULL: ${err}`);
-  }
-}
+          // Update sibling rows to null for lastRowAtLevel
+          for (let key in lastRowAtLevel) {
+            const row = lastRowAtLevel[key];
+            await this.tRowRepository
+              .createQueryBuilder()
+              .update(TRow)
+              .set({ siblingRow: null })
+              .where(constants.lastSiblingCondition, { rowId: row.id })
+              .execute();
+          }
         }
       }
-      return { message: 'Excel file processed successfully' };
+
+      return { message: constants.successMessage };
     } catch (error) {
+      // Handle server error and throw HTTP exception
       console.error(error);
       throw new HttpException(
-        'Internal server error',
+        constants.serverError,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  // Function to get the next row value from the repository
+  async getNextRowValue(repository: Repository<TRow>): Promise<number> {
+    const lastRow = await repository
+      .createQueryBuilder()
+      .orderBy(constants.tRow, 'DESC')
+      .getOne();
+
+    return lastRow ? parseInt(lastRow.row) + constants.one : constants.one;
   }
 }

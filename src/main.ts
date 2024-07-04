@@ -9,7 +9,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
    .setTitle('AIC')
-   .setDescription('AIC API Documentation')
+   .setDescription('AIC Auto Script')
    .setVersion('1.0')
    .addTag('AIC')
    .build();
