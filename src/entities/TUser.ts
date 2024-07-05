@@ -14,8 +14,7 @@ import { TRow } from "./TRow";
 @Index("User_ukey", ["user"], { unique: true })
 @Entity("t-User", { schema: "public" })
 export class TUser {
-  // @Column("USER-DEFINED", { name: "User", unique: true })
-  // user: string;
+ 
   @PrimaryColumn({ name: "User",primary: false })
   user: string;
 

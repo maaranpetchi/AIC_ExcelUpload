@@ -31,73 +31,72 @@ export class AppController {
       await workbook.xlsx.load(file.buffer);
       const sheets = workbook.worksheets;
       const pageIdToNameMap: { [pageName: string]: string } = {};
+      //--Col Id to Col name mapping
+      const colData = {}; // Object to store Col ID, Page Type, Page ID, and Col Name
 
-      // //--Col Id to Col name mapping
-      // const colData = {}; // Object to store Col ID, Page Type, Page ID, and Col Name
+      // Process the 'All Cols' sheet first
+      const allColsSheet = sheets.find(sheet => sheet.name === constants.allcols);
+      if (!allColsSheet) {
+        throw new Error(constants.allcolsError);
+      }
 
-      // // Process the 'All Cols' sheet first
-      // const allColsSheet = sheets.find(sheet => sheet.name === constants.allcols);
-      // if (!allColsSheet) {
-      //   throw new Error(`Sheet with name ${constants.allcols} not found`);
-      // }
+      let colIdIndex = constants.index;
+      let pageTypeIndex = constants.index;
+      let pageIdIndex = constants.index;
+      let colNameIndex = constants.index;
+      let headerRowIndex = constants.index;
 
-      // let colIdIndex = constants.index;
-      // let pageTypeIndex = constants.index;
-      // let pageIdIndex = constants.index;
-      // let colNameIndex = constants.index;
-      // let headerRowIndex = constants.index;
+      // Find the indices of the headers
+      for (let rowIndex = constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+        const row = allColsSheet.getRow(rowIndex);
+        for (let colIndex = constants.one; colIndex <= row.cellCount; colIndex++) {
+          const cellValue = row.getCell(colIndex).value?.toString();
+          if (cellValue && constants.colIdPattern.test(cellValue)) {
+            colIdIndex = colIndex;
+            headerRowIndex = rowIndex;
+          }
+          if (cellValue && constants.pageTypePattern.test(cellValue)) {
+            pageTypeIndex = colIndex;
+            headerRowIndex = rowIndex;
+          }
+          if (cellValue && constants.pageIdPattern.test(cellValue)) {
+            pageIdIndex = colIndex;
+            headerRowIndex = rowIndex;
+          }
+          if (cellValue && constants.colNamePattern.test(cellValue)) {
+            colNameIndex = colIndex;
+            headerRowIndex = rowIndex;
+          }
+        }
+        if (headerRowIndex !== constants.index) break; // Exit the loop once the header is found
+      }
 
-      // // Find the indices of the headers
-      // for (let rowIndex = constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
-      //   const row = allColsSheet.getRow(rowIndex);
-      //   for (let colIndex = constants.one; colIndex <= row.cellCount; colIndex++) {
-      //     const cellValue = row.getCell(colIndex).value?.toString();
-      //     if (cellValue && constants.colIdPattern.test(cellValue)) {
-      //       colIdIndex = colIndex;
-      //       headerRowIndex = rowIndex;
-      //     }
-      //     if (cellValue && constants.pageTypePattern.test(cellValue)) {
-      //       pageTypeIndex = colIndex;
-      //       headerRowIndex = rowIndex;
-      //     }
-      //     if (cellValue && constants.pageIdPattern.test(cellValue)) {
-      //       pageIdIndex = colIndex;
-      //       headerRowIndex = rowIndex;
-      //     }
-      //     if (cellValue && constants.colNamePattern.test(cellValue)) {
-      //       colNameIndex = colIndex;
-      //       headerRowIndex = rowIndex;
-      //     }
-      //   }
-      //   if (headerRowIndex !== constants.index) break; // Exit the loop once the header is found
-      // }
+      if (
+        colIdIndex === constants.index ||
+        pageTypeIndex === constants.index ||
+        pageIdIndex === constants.index ||
+        colNameIndex === constants.index
+      ) {
+        throw new Error(constants.headerError);
+      }
 
-      // if (
-      //   colIdIndex === constants.index ||
-      //   pageTypeIndex === constants.index ||
-      //   pageIdIndex === constants.index ||
-      //   colNameIndex === constants.index
-      // ) {
-      //   throw new Error('Required headers not found in the sheet');
-      // }
+      // Read the data under the headers and store it in the object
+      for (let rowIndex = headerRowIndex + constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+        const row = allColsSheet.getRow(rowIndex);
+        const colId = row.getCell(colIdIndex).value?.toString();
+        const pageType = row.getCell(pageTypeIndex).value?.toString();
+        const pageId = row.getCell(pageIdIndex).value?.toString();
+        const colName = row.getCell(colNameIndex).value?.toString();
+        if (colId && colName) {
+          colData[colId] = {
+            pageType,
+            pageId,
+            colName
+          };
+        }
+      }
 
-      // // Read the data under the headers and store it in the object
-      // for (let rowIndex = headerRowIndex + constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
-      //   const row = allColsSheet.getRow(rowIndex);
-      //   const colId = row.getCell(colIdIndex).value?.toString();
-      //   const pageType = row.getCell(pageTypeIndex).value?.toString();
-      //   const pageId = row.getCell(pageIdIndex).value?.toString();
-      //   const colName = row.getCell(colNameIndex).value?.toString();
-      //   if (colId && colName) {
-      //     colData[colId] = {
-      //       pageType,
-      //       pageId,
-      //       colName
-      //     };
-      //   }
-      // }
-
-      // console.log('Col Data:', colData);
+      console.log('Col Data:', colData);
       
       for (const sheet of sheets) {
         if (constants.sheetNames.includes(sheet.name)) {
@@ -138,7 +137,7 @@ export class AppController {
               }
             }
 
-            // Save page IDs into the 'TPg' table
+            // Save page IDs into the 't-PG' table
             for (const PG of pageIds.slice(constants.one)) {
               const tpgEntity = this.tpgRepository.create({ pg: PG });
               await this.tpgRepository.save(tpgEntity);
@@ -164,7 +163,7 @@ export class AppController {
                       colColumnValues.push(value);
                     }
                   }
-                  // Save col values into 'TCol' table
+                  // Save col values into 't-Col' table
                   for (const Col of colColumnValues.slice(constants.one)) {
                     const newColEntity = this.tColRepository.create({ col: Col });
                     await this.tColRepository.save(newColEntity);
@@ -179,7 +178,7 @@ export class AppController {
             var pageId = pageIdToNameMap[sheet.name];
           }
 
-          // Find existing page in 'TPg' table
+          // Find existing page in 't-PG' table
           const existingPage = await this.tpgRepository.findOne({ where: { pg: pageId } });
           if (!existingPage) {
             console.error(pageId + constants.pageIdError);
@@ -326,7 +325,7 @@ export class AppController {
             }
 
             try {
-              // Save the new row entity and retrieve the new row ID
+              // Save the new row entity in t-Row and retrieve the new row ID
               const savedRowEntity = await this.tRowRepository.save(newRowEntity);
               newRowId = savedRowEntity.row;
 
@@ -338,12 +337,7 @@ export class AppController {
 
               // Update sibling row ID if siblingRowId is not null
               if (siblingRowId !== null) {
-                await this.tRowRepository
-                  .createQueryBuilder()
-                  .update(TRow)
-                  .set({ siblingRow: newRowId })
-                  .where(constants.siblingRowCondition, { siblingRowId })
-                  .execute();
+                await this.tRowRepository.update(siblingRowId,{siblingRow: newRowId});
               }
 
               // Store current row details in previousRows and lastRowAtLevel objects
@@ -367,22 +361,17 @@ export class AppController {
             }
           }
 
-          // Update sibling rows to null for lastRowAtLevel
+          // Update sibling rows to null for lastChildRow
           for (let key in lastRowAtLevel) {
-            const row = lastRowAtLevel[key];
-            await this.tRowRepository
-              .createQueryBuilder()
-              .update(TRow)
-              .set({ siblingRow: null })
-              .where(constants.lastSiblingCondition, { rowId: row.id })
-              .execute();
+            const rowId = lastRowAtLevel[key].id;
+            await this.tRowRepository.update(rowId, {siblingRow: null});
           }
         }
       }
 
       return { message: constants.successMessage };
     } catch (error) {
-      // Handle server error and throw HTTP exception
+      // log the error and throw HTTP exception
       console.error(error);
       throw new HttpException(
         constants.serverError,
@@ -393,11 +382,7 @@ export class AppController {
 
   // Function to get the next row value from the repository
   async getNextRowValue(repository: Repository<TRow>): Promise<number> {
-    const lastRow = await repository
-      .createQueryBuilder()
-      .orderBy(constants.tRow, 'DESC')
-      .getOne();
-
+    const [lastRow] = await repository.find({ order: { row: 'DESC' }, take: 1 });
     return lastRow ? parseInt(lastRow.row) + constants.one : constants.one;
   }
 }

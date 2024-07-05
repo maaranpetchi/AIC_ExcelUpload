@@ -37,8 +37,6 @@ export const constants = {
     index: -1,
     one: 1,
     zero: 0,
-    siblingRowCondition: "row = :siblingRowId",
-    lastSiblingCondition: "row = :rowId",
     successMessage: 'Excel file processed successfully',
     serverError: 'Internal server error',
     rowError: 'Error inserting row:',
@@ -46,6 +44,6 @@ export const constants = {
     rowStatusError: 'Row-Status column not found in sheet',
     pageIdError: 'does not exist in the referenced table',
     headerError: 'Header row not found in sheet',
-    tRow: "TRow.Row",
+    allcolsError: 'All Cols Sheet not found',
     typeORMFeature: [TPg, TFormat, TRow,TCell,TCol,TItem,TTx,TUser]
   };
