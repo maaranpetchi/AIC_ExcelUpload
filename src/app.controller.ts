@@ -35,7 +35,9 @@ export class AppController {
       const colData = {}; // Object to store Col ID, Page Type, Page ID, and Col Name
 
       // Process the 'All Cols' sheet first
-      const allColsSheet = sheets.find(sheet => sheet.name === constants.allcols);
+      const allColsSheet = sheets.find(
+        (sheet) => sheet.name === constants.allcols,
+      );
       if (!allColsSheet) {
         throw new Error(constants.allcolsError);
       }
@@ -47,9 +49,17 @@ export class AppController {
       let headerRowIndex = constants.index;
 
       // Find the indices of the headers
-      for (let rowIndex = constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+      for (
+        let rowIndex = constants.one;
+        rowIndex <= allColsSheet.lastRow.number;
+        rowIndex++
+      ) {
         const row = allColsSheet.getRow(rowIndex);
-        for (let colIndex = constants.one; colIndex <= row.cellCount; colIndex++) {
+        for (
+          let colIndex = constants.one;
+          colIndex <= row.cellCount;
+          colIndex++
+        ) {
           const cellValue = row.getCell(colIndex).value?.toString();
           if (cellValue && constants.colIdPattern.test(cellValue)) {
             colIdIndex = colIndex;
@@ -81,7 +91,11 @@ export class AppController {
       }
 
       // Read the data under the headers and store it in the object
-      for (let rowIndex = headerRowIndex + constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+      for (
+        let rowIndex = headerRowIndex + constants.one;
+        rowIndex <= allColsSheet.lastRow.number;
+        rowIndex++
+      ) {
         const row = allColsSheet.getRow(rowIndex);
         const colId = row.getCell(colIdIndex).value?.toString();
         const pageType = row.getCell(pageTypeIndex).value?.toString();
@@ -91,13 +105,13 @@ export class AppController {
           colData[colId] = {
             pageType,
             pageId,
-            colName
+            colName,
           };
         }
       }
 
       console.log('Col Data:', colData);
-      
+
       for (const sheet of sheets) {
         if (constants.sheetNames.includes(sheet.name)) {
           console.log(`Processing sheet: ${sheet.name}`);
@@ -109,13 +123,28 @@ export class AppController {
             const pageNames: string[] = [];
 
             // Iterate through each cell in the sheet
-            for (let sheetRowIndex = constants.one; sheetRowIndex <= sheet.lastRow.number; sheetRowIndex++) {
-              for (let sheetColIndex = constants.one; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
+            for (
+              let sheetRowIndex = constants.one;
+              sheetRowIndex <= sheet.lastRow.number;
+              sheetRowIndex++
+            ) {
+              for (
+                let sheetColIndex = constants.one;
+                sheetColIndex <= sheet.lastColumn.number;
+                sheetColIndex++
+              ) {
                 const cell = sheet.getCell(sheetRowIndex, sheetColIndex);
 
                 // Check for page ID pattern and populate pageIds array
-                if (cell.value && constants.pageIdMandatoryPattern.test(cell.value.toString())) {
-                  for (let rowIdx = constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
+                if (
+                  cell.value &&
+                  constants.pageIdMandatoryPattern.test(cell.value.toString())
+                ) {
+                  for (
+                    let rowIdx = constants.one;
+                    rowIdx <= sheet.lastRow.number;
+                    rowIdx++
+                  ) {
                     const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                     const value = rowCell.value;
                     if (value !== null && value !== undefined) {
@@ -125,8 +154,15 @@ export class AppController {
                 }
 
                 // Check for page name pattern and populate pageNames array
-                if (cell.value && constants.pageNamePattern.test(cell.value.toString())) {
-                  for (let rowIdx = constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
+                if (
+                  cell.value &&
+                  constants.pageNamePattern.test(cell.value.toString())
+                ) {
+                  for (
+                    let rowIdx = constants.one;
+                    rowIdx <= sheet.lastRow.number;
+                    rowIdx++
+                  ) {
                     const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                     const value = rowCell.value;
                     if (value !== null && value !== undefined) {
@@ -151,12 +187,27 @@ export class AppController {
 
           // Process 'All Cols' sheet
           if (sheet.name === constants.allcols) {
-            for (let sheetRowIndex = constants.one; sheetRowIndex <= sheet.lastRow.number; sheetRowIndex++) {
-              for (let sheetColIndex = constants.one; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
+            for (
+              let sheetRowIndex = constants.one;
+              sheetRowIndex <= sheet.lastRow.number;
+              sheetRowIndex++
+            ) {
+              for (
+                let sheetColIndex = constants.one;
+                sheetColIndex <= sheet.lastColumn.number;
+                sheetColIndex++
+              ) {
                 const cell = sheet.getCell(sheetRowIndex, sheetColIndex);
-                if (cell.value && constants.colIdPattern.test(cell.value.toString())) {
+                if (
+                  cell.value &&
+                  constants.colIdPattern.test(cell.value.toString())
+                ) {
                   const colColumnValues = [];
-                  for (let rowIdx = constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
+                  for (
+                    let rowIdx = constants.one;
+                    rowIdx <= sheet.lastRow.number;
+                    rowIdx++
+                  ) {
                     const rowCell = sheet.getCell(rowIdx, sheetColIndex);
                     const value = rowCell.value;
                     if (value !== null && value !== undefined) {
@@ -165,7 +216,9 @@ export class AppController {
                   }
                   // Save col values into 't-Col' table
                   for (const Col of colColumnValues.slice(constants.one)) {
-                    const newColEntity = this.tColRepository.create({ col: Col });
+                    const newColEntity = this.tColRepository.create({
+                      col: Col,
+                    });
                     await this.tColRepository.save(newColEntity);
                   }
                 }
@@ -179,7 +232,9 @@ export class AppController {
           }
 
           // Find existing page in 't-PG' table
-          const existingPage = await this.tpgRepository.findOne({ where: { pg: pageId } });
+          const existingPage = await this.tpgRepository.findOne({
+            where: { pg: pageId },
+          });
           if (!existingPage) {
             console.error(pageId + constants.pageIdError);
             continue;
@@ -216,14 +271,21 @@ export class AppController {
           let nestedColumn = constants.nestedColumns[sheet.name];
 
           // Iterate through header row to identify specific columns
-          for (let sheetColIndex = constants.one; sheetColIndex <= sheet.lastColumn.number; sheetColIndex++) {
+          for (
+            let sheetColIndex = constants.one;
+            sheetColIndex <= sheet.lastColumn.number;
+            sheetColIndex++
+          ) {
             const cell = headerRow.getCell(sheetColIndex);
             if (cell.value) {
               if (constants.rowIdPattern.test(cell.value.toString())) {
                 rowIdColumnIndex = sheetColIndex;
               } else if (constants.rowStatus.test(cell.value.toString())) {
                 rowStatusColumnIndex = sheetColIndex;
-              } else if (nestedColumn && new RegExp(nestedColumn).test(cell.value.toString())) {
+              } else if (
+                nestedColumn &&
+                new RegExp(nestedColumn).test(cell.value.toString())
+              ) {
                 if (nestedColumnStartIndex === constants.index) {
                   nestedColumnStartIndex = sheetColIndex;
                 }
@@ -243,14 +305,26 @@ export class AppController {
           let lastRowAtLevel = {};
 
           // Iterate through each row in the sheet
-          for (let rowIdx = headerRowIndex + constants.one; rowIdx <= sheet.lastRow.number; rowIdx++) {
+          for (
+            let rowIdx = headerRowIndex + constants.one;
+            rowIdx <= sheet.lastRow.number;
+            rowIdx++
+          ) {
             const row = sheet.getRow(rowIdx);
 
             // Check if the row is empty
             let isRowEmpty = true;
-            for (let colIdx = constants.one; colIdx <= row.cellCount; colIdx++) {
+            for (
+              let colIdx = constants.one;
+              colIdx <= row.cellCount;
+              colIdx++
+            ) {
               const cell = row.getCell(colIdx);
-              if (cell.value !== null && cell.value !== undefined && cell.value.toString().trim() !== '') {
+              if (
+                cell.value !== null &&
+                cell.value !== undefined &&
+                cell.value.toString().trim() !== ''
+              ) {
                 isRowEmpty = false;
                 break;
               }
@@ -262,22 +336,39 @@ export class AppController {
             }
 
             // Retrieve row ID and row status values
-            const rowIdCell = rowIdColumnIndex !== constants.index ? row.getCell(rowIdColumnIndex) : null;
+            const rowIdCell =
+              rowIdColumnIndex !== constants.index
+                ? row.getCell(rowIdColumnIndex)
+                : null;
             const rowStatusCell = row.getCell(rowStatusColumnIndex);
             const rowValue = rowIdCell ? rowIdCell.value : null;
             const rowStatusValue = rowStatusCell ? rowStatusCell.value : null;
 
             // Skip rows with no row value when row ID column index is valid
-            if (rowIdColumnIndex !== constants.index && (rowValue === null || rowValue === undefined)) {
+            if (
+              rowIdColumnIndex !== constants.index &&
+              (rowValue === null || rowValue === undefined)
+            ) {
               continue;
             }
 
             // Determine row level based on row status and nested columns
             let rowLevel = constants.one;
-            if (rowStatusValue !== null && rowStatusValue !== undefined && rowStatusValue.toString() === constants.sectionHead) {
+            if (
+              rowStatusValue !== null &&
+              rowStatusValue !== undefined &&
+              rowStatusValue.toString() === constants.sectionHead
+            ) {
               rowLevel = constants.zero;
-            } else if (nestedColumnStartIndex !== constants.index && nestedColumnEndIndex !== constants.index) {
-              for (let colIdx = nestedColumnStartIndex; colIdx <= nestedColumnEndIndex; colIdx++) {
+            } else if (
+              nestedColumnStartIndex !== constants.index &&
+              nestedColumnEndIndex !== constants.index
+            ) {
+              for (
+                let colIdx = nestedColumnStartIndex;
+                colIdx <= nestedColumnEndIndex;
+                colIdx++
+              ) {
                 const cell = row.getCell(colIdx);
                 if (cell.value) {
                   rowLevel = colIdx - nestedColumnStartIndex + constants.one;
@@ -291,7 +382,11 @@ export class AppController {
             let siblingRowId = null;
 
             // Determine parent and sibling row IDs based on previous rows
-            for (let i = previousRows.length - constants.one; i >= constants.zero; i--) {
+            for (
+              let i = previousRows.length - constants.one;
+              i >= constants.zero;
+              i--
+            ) {
               if (previousRows[i].rowLevel < rowLevel) {
                 parentRowId = previousRows[i].id;
                 break;
@@ -315,7 +410,9 @@ export class AppController {
                 parentRow: parentRowId,
               });
             } else {
-              const generatedRowValue = await this.getNextRowValue(this.tRowRepository);
+              const generatedRowValue = await this.getNextRowValue(
+                this.tRowRepository,
+              );
               newRowEntity = this.tRowRepository.create({
                 row: generatedRowValue.toString(),
                 pg: existingPage,
@@ -326,7 +423,8 @@ export class AppController {
 
             try {
               // Save the new row entity in t-Row and retrieve the new row ID
-              const savedRowEntity = await this.tRowRepository.save(newRowEntity);
+              const savedRowEntity =
+                await this.tRowRepository.save(newRowEntity);
               newRowId = savedRowEntity.row;
 
               // Handle case where newRowId is undefined
@@ -337,7 +435,9 @@ export class AppController {
 
               // Update sibling row ID if siblingRowId is not null
               if (siblingRowId !== null) {
-                await this.tRowRepository.update(siblingRowId,{siblingRow: newRowId});
+                await this.tRowRepository.update(siblingRowId, {
+                  siblingRow: newRowId,
+                });
               }
 
               // Store current row details in previousRows and lastRowAtLevel objects
@@ -364,7 +464,7 @@ export class AppController {
           // Update sibling rows to null for lastChildRow
           for (let key in lastRowAtLevel) {
             const rowId = lastRowAtLevel[key].id;
-            await this.tRowRepository.update(rowId, {siblingRow: null});
+            await this.tRowRepository.update(rowId, { siblingRow: null });
           }
         }
       }
@@ -382,7 +482,10 @@ export class AppController {
 
   // Function to get the next row value from the repository
   async getNextRowValue(repository: Repository<TRow>): Promise<number> {
-    const [lastRow] = await repository.find({ order: { row: 'DESC' }, take: 1 });
+    const [lastRow] = await repository.find({
+      order: { row: 'DESC' },
+      take: 1,
+    });
     return lastRow ? parseInt(lastRow.row) + constants.one : constants.one;
   }
 }
