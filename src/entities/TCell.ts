@@ -7,31 +7,31 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { TCol } from "./TCol";
-import { TRow } from "./TRow";
-import { TFormat } from "./TFormat";
+import { tCol } from "./tCol";
+import { tRow } from "./tRow";
+import { tFormat } from "./tFormat";
 
 @Index("Cell_pkey", ["cell"], { unique: true })
-@Entity("t-Cell", { schema: "public" })
-export class TCell {
+@Entity("tCell", { schema: "public" })
+export class tCell {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Cell" })
   cell: string;
 
-  @Column("jsonb", { name: "DropDown-Source", nullable: true })
+  @Column("jsonb", { name: "DropDownSource", nullable: true })
   dropDownSource: object | null;
 
-  @ManyToOne(() => TCol, (tCol) => tCol.tCells)
+  @ManyToOne(() => tCol, (tCol) => tCol.tCells)
   @JoinColumn([{ name: "Col", referencedColumnName: "col" }])
-  col: TCol;
+  col: tCol;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tCells)
-  @JoinColumn([{ name: "Data-Type", referencedColumnName: "row" }])
-  dataType: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tCells)
+  @JoinColumn([{ name: "DataType", referencedColumnName: "row" }])
+  dataType: tRow;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tCells2)
+  @ManyToOne(() => tRow, (tRow) => tRow.tCells2)
   @JoinColumn([{ name: "Row", referencedColumnName: "row" }])
-  row: TRow;
+  row: tRow;
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.default)
-  tFormats: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.default)
+  tFormats: tFormat[];
 }

@@ -1,19 +1,19 @@
 import { Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { TFormat } from "./TFormat";
-import { TRow } from "./TRow";
+import { tFormat } from "./tFormat";
+import { tRow } from "./tRow";
 
-@Index("PG_pkey", ["pg"], { unique: true })
-@Entity("t-PG", { schema: "public" })
-export class TPg {
-  @PrimaryGeneratedColumn({ type: "bigint", name: "PG" })
+@Index("Pg_pkey", ["pg"], { unique: true })
+@Entity("tPg", { schema: "public" })
+export class tPg {
+  @PrimaryGeneratedColumn({ type: "bigint", name: "Pg" })
   pg: string;
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.pgLevelSet)
-  tFormats: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.pgLevelSet)
+  tFormats: tFormat[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.pgSearchSet)
-  tFormats2: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.pgSearchSet)
+  tFormats2: tFormat[];
 
-  @OneToMany(() => TRow, (tRow) => tRow.pg)
-  tRows: TRow[];
+  @OneToMany(() => tRow, (tRow) => tRow.pg)
+  tRows: tRow[];
 }

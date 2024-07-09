@@ -6,11 +6,11 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { TRow } from "./TRow";
+import { tRow } from "./tRow";
 
 @Index("Item_pkey", ["item"], { unique: true })
-@Entity("t-Item", { schema: "public" })
-export class TItem {
+@Entity("tItem", { schema: "public" })
+export class tItem {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Item" })
   item: string;
 
@@ -38,21 +38,21 @@ export class TItem {
   @Column("numeric", { name: "Qty", nullable: true })
   qty: string | null;
 
-  @Column("numeric", { name: "Std-Qty", nullable: true })
+  @Column("numeric", { name: "StdQty", nullable: true })
   stdQty: string | null;
 
   @Column("jsonb", { name: "Foreign", nullable: true })
   foreign: object | null;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tItems)
-  @JoinColumn([{ name: "Data-Type", referencedColumnName: "row" }])
-  dataType: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tItems)
+  @JoinColumn([{ name: "DataType", referencedColumnName: "row" }])
+  dataType: tRow;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tItems2)
-  @JoinColumn([{ name: "Std-Unit", referencedColumnName: "row" }])
-  stdUnit: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tItems2)
+  @JoinColumn([{ name: "StdUnit", referencedColumnName: "row" }])
+  stdUnit: tRow;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tItems3)
+  @ManyToOne(() => tRow, (tRow) => tRow.tItems3)
   @JoinColumn([{ name: "Unit", referencedColumnName: "row" }])
-  unit: TRow;
+  unit: tRow;
 }

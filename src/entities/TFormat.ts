@@ -6,15 +6,15 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { TCell } from "./TCell";
-import { TRow } from "./TRow";
-import { TUser } from "./TUser";
-import { TPg } from "./TPg";
-import { TCol } from "./TCol";
+import { tCell } from "./tCell";
+import { tRow } from "./tRow";
+import { tUser } from "./tUser";
+import { tPg } from "./tPg";
+import { tCol } from "./tCol";
 
 @Index("Format_pkey", ["format"], { unique: true })
-@Entity("t-Format", { schema: "public" })
-export class TFormat {
+@Entity("tFormat", { schema: "public" })
+export class tFormat {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Format" })
   format: string;
 
@@ -24,28 +24,28 @@ export class TFormat {
   @Column("bigint", { name: "Container", nullable: true })
   container: string | null;
 
-  @Column("smallint", { name: "PG-Freeze-Col", nullable: true })
+  @Column("smallint", { name: "PGFreezeCol", nullable: true })
   pgFreezeCol: number | null;
 
-  @Column("smallint", { name: "PG-Expand", nullable: true })
+  @Column("smallint", { name: "PGExpand", nullable: true })
   pgExpand: number | null;
 
-  @Column("jsonb", { name: "PG-Sort", nullable: true })
+  @Column("jsonb", { name: "PGSort", nullable: true })
   pgSort: object | null;
 
-  @Column("jsonb", { name: "PG-Filter", nullable: true })
+  @Column("jsonb", { name: "PGFilter", nullable: true })
   pgFilter: object | null;
 
-  @Column("smallint", { name: "Col-Order", nullable: true })
+  @Column("smallint", { name: "ColOrder", nullable: true })
   colOrder: number | null;
 
-  @Column("smallint", { name: "Col-Min-Width", nullable: true })
+  @Column("smallint", { name: "ColMinWidth", nullable: true })
   colMinWidth: number | null;
 
-  @Column("smallint", { name: "Item-Order", nullable: true })
+  @Column("smallint", { name: "ItemOrder", nullable: true })
   itemOrder: number | null;
 
-  @Column("jsonb", { name: "Font-Style", nullable: true })
+  @Column("jsonb", { name: "FontStyle", nullable: true })
   fontStyle: object | null;
 
   @Column("jsonb", { name: "Formula", nullable: true })
@@ -54,50 +54,50 @@ export class TFormat {
   @Column("jsonb", { name: "Comment", nullable: true })
   comment: object | null;
 
-  @Column("timestamp without time zone", { name: "Deleted-At", nullable: true })
+  @Column("timestamp without time zone", { name: "DeletedAt", nullable: true })
   deletedAt: Date | null;
 
-  @ManyToOne(() => TCell, (tCell) => tCell.tFormats)
+  @ManyToOne(() => tCell, (tCell) => tCell.tFormats)
   @JoinColumn([{ name: "Default", referencedColumnName: "cell" }])
-  default: TCell;
+  default: tCell;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tFormats)
+  @ManyToOne(() => tRow, (tRow) => tRow.tFormats)
   @JoinColumn([{ name: "Deleted", referencedColumnName: "row" }])
-  deleted: TRow;
+  deleted: tRow;
 
-  @ManyToOne(() => TUser, (tUser) => tUser.tFormats)
-  @JoinColumn([{ name: "Deleted-By", referencedColumnName: "user" }])
-  deletedBy: TUser;
+  @ManyToOne(() => tUser, (tUser) => tUser.tFormats)
+  @JoinColumn([{ name: "DeletedBy", referencedColumnName: "user" }])
+  deletedBy: tUser;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tFormats2)
-  @JoinColumn([{ name: "Object-Type", referencedColumnName: "row" }])
-  objectType: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tFormats2)
+  @JoinColumn([{ name: "ObjectType", referencedColumnName: "row" }])
+  objectType: tRow;
 
-  @ManyToOne(() => TUser, (tUser) => tUser.tFormats2)
+  @ManyToOne(() => tUser, (tUser) => tUser.tFormats2)
   @JoinColumn([{ name: "Owner", referencedColumnName: "user" }])
-  owner: TUser;
+  owner: tUser;
 
-  @ManyToOne(() => TPg, (tPg) => tPg.tFormats)
-  @JoinColumn([{ name: "PG-Level-Set", referencedColumnName: "pg" }])
-  pgLevelSet: TPg;
+  @ManyToOne(() => tPg, (tPg) => tPg.tFormats)
+  @JoinColumn([{ name: "PGLevelSet", referencedColumnName: "pg" }])
+  pgLevelSet: tPg;
 
-  @ManyToOne(() => TCol, (tCol) => tCol.tFormats)
-  @JoinColumn([{ name: "PG-Nested-Col", referencedColumnName: "col" }])
-  pgNestedCol: TCol;
+  @ManyToOne(() => tCol, (tCol) => tCol.tFormats)
+  @JoinColumn([{ name: "PGNestedCol", referencedColumnName: "col" }])
+  pgNestedCol: tCol;
 
-  @ManyToOne(() => TPg, (tPg) => tPg.tFormats2)
-  @JoinColumn([{ name: "PG-Search-Set", referencedColumnName: "pg" }])
-  pgSearchSet: TPg;
+  @ManyToOne(() => tPg, (tPg) => tPg.tFormats2)
+  @JoinColumn([{ name: "PGSearchSet", referencedColumnName: "pg" }])
+  pgSearchSet: tPg;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tFormats3)
-  @JoinColumn([{ name: "RowSet-Tick", referencedColumnName: "row" }])
-  rowSetTick: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tFormats3)
+  @JoinColumn([{ name: "RowSetTick", referencedColumnName: "row" }])
+  rowSetTick: tRow;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tFormats4)
+  @ManyToOne(() => tRow, (tRow) => tRow.tFormats4)
   @JoinColumn([{ name: "Unit", referencedColumnName: "row" }])
-  unit: TRow;
+  unit: tRow;
 
-  @ManyToOne(() => TUser, (tUser) => tUser.tFormats3)
+  @ManyToOne(() => tUser, (tUser) => tUser.tFormats3)
   @JoinColumn([{ name: "User", referencedColumnName: "user" }])
-  user: TUser;
+  user: tUser;
 }

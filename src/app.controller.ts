@@ -11,16 +11,18 @@ import * as ExcelJS from 'exceljs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { constants } from './constants';
-import { TPg } from './entities/TPg';
-import { TCol } from './entities/TCol';
-import { TRow } from './entities/TRow';
+import { tPg } from './entities/tPg';
+import { tCol } from './entities/tCol';
+import { tRow } from './entities/tRow';
+import { tCell } from './entities/tCell';
 
 @Controller('excel')
 export class AppController {
   constructor(
-    @InjectRepository(TPg) private readonly tpgRepository: Repository<TPg>,
-    @InjectRepository(TCol) private readonly tColRepository: Repository<TCol>,
-    @InjectRepository(TRow) private readonly tRowRepository: Repository<TRow>,
+    @InjectRepository(tPg) private readonly tPgRepository: Repository<tPg>,
+    @InjectRepository(tCol) private readonly tColRepository: Repository<tCol>,
+    @InjectRepository(tRow) private readonly tRowRepository: Repository<tRow>,
+    @InjectRepository(tCell) private readonly tCellRepository: Repository<tCell>,
   ) {}
 
   @Post('upload')
@@ -65,7 +67,7 @@ export class AppController {
             colIdIndex = colIndex;
             headerRowIndex = rowIndex;
           }
-          if (cellValue && constants.pageTypePattern.test(cellValue)) {
+          if (cellValue && constants.pageType.test(cellValue)) {
             pageTypeIndex = colIndex;
             headerRowIndex = rowIndex;
           }
@@ -138,7 +140,7 @@ export class AppController {
                 // Check for page ID pattern and populate pageIds array
                 if (
                   cell.value &&
-                  constants.pageIdMandatoryPattern.test(cell.value.toString())
+                  constants.pageIdMandatory.test(cell.value.toString())
                 ) {
                   for (
                     let rowIdx = constants.one;
@@ -156,7 +158,7 @@ export class AppController {
                 // Check for page name pattern and populate pageNames array
                 if (
                   cell.value &&
-                  constants.pageNamePattern.test(cell.value.toString())
+                  constants.pageName.test(cell.value.toString())
                 ) {
                   for (
                     let rowIdx = constants.one;
@@ -173,10 +175,10 @@ export class AppController {
               }
             }
 
-            // Save page IDs into the 't-PG' table
-            for (const PG of pageIds.slice(constants.one)) {
-              const tpgEntity = this.tpgRepository.create({ pg: PG });
-              await this.tpgRepository.save(tpgEntity);
+            // Save page IDs into the 'tPg' table
+            for (const Pg of pageIds.slice(constants.one)) {
+              const tpgEntity = this.tPgRepository.create({ pg: Pg });
+              await this.tPgRepository.save(tpgEntity);
             }
 
             // Create a key-value pair of page ID and page name
@@ -214,7 +216,7 @@ export class AppController {
                       colColumnValues.push(value);
                     }
                   }
-                  // Save col values into 't-Col' table
+                  // Save col values into 'tCol' table
                   for (const Col of colColumnValues.slice(constants.one)) {
                     const newColEntity = this.tColRepository.create({
                       col: Col,
@@ -231,8 +233,8 @@ export class AppController {
             var pageId = pageIdToNameMap[sheet.name];
           }
 
-          // Find existing page in 't-PG' table
-          const existingPage = await this.tpgRepository.findOne({
+          // Find existing page in 'tPg' table
+          const existingPage = await this.tPgRepository.findOne({
             where: { pg: pageId },
           });
           if (!existingPage) {
@@ -278,7 +280,7 @@ export class AppController {
           ) {
             const cell = headerRow.getCell(sheetColIndex);
             if (cell.value) {
-              if (constants.rowIdPattern.test(cell.value.toString())) {
+              if (constants.rowId.test(cell.value.toString())) {
                 rowIdColumnIndex = sheetColIndex;
               } else if (constants.rowStatus.test(cell.value.toString())) {
                 rowStatusColumnIndex = sheetColIndex;
@@ -291,6 +293,7 @@ export class AppController {
                 }
                 nestedColumnEndIndex = sheetColIndex;
               }
+              
             }
           }
 
@@ -320,6 +323,7 @@ export class AppController {
               colIdx++
             ) {
               const cell = row.getCell(colIdx);
+              
               if (
                 cell.value !== null &&
                 cell.value !== undefined &&
@@ -422,7 +426,7 @@ export class AppController {
             }
 
             try {
-              // Save the new row entity in t-Row and retrieve the new row ID
+              // Save the new row entity in tRow and retrieve the new row ID
               const savedRowEntity =
                 await this.tRowRepository.save(newRowEntity);
               newRowId = savedRowEntity.row;
@@ -459,6 +463,21 @@ export class AppController {
               console.error(constants.rowError + err);
               continue; // Skip to the next row in case of error
             }
+            // for (
+            //   let colIdx = constants.one;
+            //   colIdx <= row.cellCount;
+            //   colIdx++
+            // ) {
+            //   // Get the header cell value for the current column index
+            //   const headerCell = sheet.getRow(headerRowIndex).getCell(colIdx);
+            //   const headerCellValue = headerCell.value?.toString();
+            //   if(headerCellValue != null || headerCellValue != undefined)
+            //   {
+            //     if(headerCellValue
+            //   }
+            //   // Use headerCellValue as needed for logic based on the header name
+            //   console.log(`Header for column ${colIdx}: ${headerCellValue}`);
+            // }
           }
 
           // Update sibling rows to null for lastChildRow
@@ -468,7 +487,7 @@ export class AppController {
           }
         }
       }
-
+    
       return { message: constants.successMessage };
     } catch (error) {
       // log the error and throw HTTP exception
@@ -481,7 +500,7 @@ export class AppController {
   }
 
   // Function to get the next row value from the repository
-  async getNextRowValue(repository: Repository<TRow>): Promise<number> {
+  async getNextRowValue(repository: Repository<tRow>): Promise<number> {
     const [lastRow] = await repository.find({
       order: { row: 'DESC' },
       take: 1,

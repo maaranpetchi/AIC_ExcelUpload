@@ -8,83 +8,83 @@ import {
   PrimaryColumn,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { TCell } from "./TCell";
-import { TFormat } from "./TFormat";
-import { TItem } from "./TItem";
-import { TPg } from "./TPg";
-import { TTx } from "./TTx";
-import { TUser } from "./TUser";
+import { tCell } from "./tCell";
+import { tFormat } from "./tFormat";
+import { tItem } from "./tItem";
+import { tPg } from "./tPg";
+import { tTx } from "./tTx";
+import { tUser } from "./tUser";
 
 @Index("Row_pkey", ["row"], { unique: true })
-@Entity("t-Row", { schema: "public" })
-export class TRow {
+@Entity("tRow", { schema: "public" })
+export class tRow {
   @PrimaryColumn({ type: "bigint", name: "Row" })
   row: string;
 
-  @Column("smallint", { name: "Row-Level" })
+  @Column("smallint", { name: "RowLevel" })
   rowLevel: number;
 
   @Column("bigint", {name: "Inherit", array: true})
   inherit: BigInt[];
 
-  @OneToMany(() => TCell, (tCell) => tCell.dataType)
-  tCells: TCell[];
+  @OneToMany(() => tCell, (tCell) => tCell.dataType)
+  tCells: tCell[];
 
-  @OneToMany(() => TCell, (tCell) => tCell.row)
-  tCells2: TCell[];
+  @OneToMany(() => tCell, (tCell) => tCell.row)
+  tCells2: tCell[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.deleted)
-  tFormats: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.deleted)
+  tFormats: tFormat[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.objectType)
-  tFormats2: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.objectType)
+  tFormats2: tFormat[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.rowSetTick)
-  tFormats3: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.rowSetTick)
+  tFormats3: tFormat[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.unit)
-  tFormats4: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.unit)
+  tFormats4: tFormat[];
 
-  @OneToMany(() => TItem, (tItem) => tItem.dataType)
-  tItems: TItem[];
+  @OneToMany(() => tItem, (tItem) => tItem.dataType)
+  tItems: tItem[];
 
-  @OneToMany(() => TItem, (tItem) => tItem.stdUnit)
-  tItems2: TItem[];
+  @OneToMany(() => tItem, (tItem) => tItem.stdUnit)
+  tItems2: tItem[];
 
-  @OneToMany(() => TItem, (tItem) => tItem.unit)
-  tItems3: TItem[];
+  @OneToMany(() => tItem, (tItem) => tItem.unit)
+  tItems3: tItem[];
 
-  @ManyToOne(() => TPg, (tPg) => tPg.tRows)
-  @JoinColumn([{ name: "PG", referencedColumnName: "pg" }])
-  pg: TPg;
+  @ManyToOne(() => tPg, (tPg) => tPg.tRows)
+  @JoinColumn([{ name: "Pg", referencedColumnName: "pg" }])
+  pg: tPg;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tRows)
-  @JoinColumn([{ name: "Parent-Row", referencedColumnName: "row" }])
-  parentRow: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tRows)
+  @JoinColumn([{ name: "ParentRow", referencedColumnName: "row" }])
+  parentRow: tRow;
 
-  @OneToMany(() => TRow, (tRow) => tRow.parentRow)
-  tRows: TRow[];
+  @OneToMany(() => tRow, (tRow) => tRow.parentRow)
+  tRows: tRow[];
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tRows2)
+  @ManyToOne(() => tRow, (tRow) => tRow.tRows2)
   @JoinColumn([{ name: "Share", referencedColumnName: "row" }])
-  share: TRow;
+  share: tRow;
 
-  @OneToMany(() => TRow, (tRow) => tRow.share)
-  tRows2: TRow[];
+  @OneToMany(() => tRow, (tRow) => tRow.share)
+  tRows2: tRow[];
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tRows3)
-  @JoinColumn([{ name: "Sibling-Row", referencedColumnName: "row" }])
-  siblingRow: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tRows3)
+  @JoinColumn([{ name: "SiblingRow", referencedColumnName: "row" }])
+  siblingRow: tRow;
 
-  @OneToMany(() => TRow, (tRow) => tRow.siblingRow)
-  tRows3: TRow[];
+  @OneToMany(() => tRow, (tRow) => tRow.siblingRow)
+  tRows3: tRow[];
 
-  @OneToMany(() => TTx, (tTx) => tTx.txType)
-  tTxes: TTx[];
+  @OneToMany(() => tTx, (tTx) => tTx.txType)
+  tTxes: tTx[];
 
-  @OneToMany(() => TUser, (tUser) => tUser.userType)
-  tUsers: TUser[];
+  @OneToMany(() => tUser, (tUser) => tUser.userType)
+  tUsers: tUser[];
 
-  @OneToMany(() => TUser, (tUser) => tUser.userType2)
-  tUsers2: TUser[];
+  @OneToMany(() => tUser, (tUser) => tUser.userType2)
+  tUsers2: tUser[];
 }

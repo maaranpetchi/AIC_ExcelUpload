@@ -6,29 +6,29 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { TRow } from "./TRow";
-import { TUser } from "./TUser";
+import { tRow } from "./tRow";
+import { tUser } from "./tUser";
 
 @Index("Tx_pkey", ["txXid"], { unique: true })
-@Entity("t-Tx", { schema: "public" })
-export class TTx {
+@Entity("tTx", { schema: "public" })
+export class tTx {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Tx" })
   tx: string;
 
-  @Column("jsonb", { name: "Tx-AuditTrail", nullable: true })
+  @Column("jsonb", { name: "TxAuditTrail", nullable: true })
   txAuditTrail: object | null;
 
-  @Column("timestamp without time zone", { name: "Tx-DateTime" })
+  @Column("timestamp without time zone", { name: "TxDateTime" })
   txDateTime: Date;
 
-  @Column("bigint", { primary: true, name: "Tx-XID" })
+  @Column("bigint", { primary: true, name: "TxXID" })
   txXid: string;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tTxes)
-  @JoinColumn([{ name: "Tx-Type", referencedColumnName: "row" }])
-  txType: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tTxes)
+  @JoinColumn([{ name: "TxType", referencedColumnName: "row" }])
+  txType: tRow;
 
-  @ManyToOne(() => TUser, (tUser) => tUser.tTxes)
-  @JoinColumn([{ name: "Tx-User", referencedColumnName: "user" }])
-  txUser: TUser;
+  @ManyToOne(() => tUser, (tUser) => tUser.tTxes)
+  @JoinColumn([{ name: "TxUser", referencedColumnName: "user" }])
+  txUser: tUser;
 }

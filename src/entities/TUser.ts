@@ -7,34 +7,34 @@ import {
   OneToMany,
   PrimaryColumn,
 } from "typeorm";
-import { TFormat } from "./TFormat";
-import { TTx } from "./TTx";
-import { TRow } from "./TRow";
+import { tFormat } from "./tFormat";
+import { tTx } from "./tTx";
+import { tRow } from "./tRow";
 
 @Index("User_ukey", ["user"], { unique: true })
-@Entity("t-User", { schema: "public" })
-export class TUser {
+@Entity("tUser", { schema: "public" })
+export class tUser {
  
   @PrimaryColumn({ name: "User",primary: false })
   user: string;
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.deletedBy)
-  tFormats: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.deletedBy)
+  tFormats: tFormat[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.owner)
-  tFormats2: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.owner)
+  tFormats2: tFormat[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.user)
-  tFormats3: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.user)
+  tFormats3: tFormat[];
 
-  @OneToMany(() => TTx, (tTx) => tTx.txUser)
-  tTxes: TTx[];
+  @OneToMany(() => tTx, (tTx) => tTx.txUser)
+  tTxes: tTx[];
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tUsers)
-  @JoinColumn([{ name: "User-Type", referencedColumnName: "row" }])
-  userType: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tUsers)
+  @JoinColumn([{ name: "UserType", referencedColumnName: "row" }])
+  userType: tRow;
 
-  @ManyToOne(() => TRow, (tRow) => tRow.tUsers2)
-  @JoinColumn([{ name: "User-Type", referencedColumnName: "row" }])
-  userType2: TRow;
+  @ManyToOne(() => tRow, (tRow) => tRow.tUsers2)
+  @JoinColumn([{ name: "UserType", referencedColumnName: "row" }])
+  userType2: tRow;
 }

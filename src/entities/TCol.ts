@@ -1,16 +1,16 @@
 import { Entity, Index, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { TCell } from "./TCell";
-import { TFormat } from "./TFormat";
+import { tCell } from "./tCell";
+import { tFormat } from "./tFormat";
 
 @Index("Col_pkey", ["col"], { unique: true })
-@Entity("t-Col", { schema: "public" })
-export class TCol {
+@Entity("tCol", { schema: "public" })
+export class tCol {
   @PrimaryGeneratedColumn({ type: "bigint", name: "Col" })
   col: string;
 
-  @OneToMany(() => TCell, (tCell) => tCell.col)
-  tCells: TCell[];
+  @OneToMany(() => tCell, (tCell) => tCell.col)
+  tCells: tCell[];
 
-  @OneToMany(() => TFormat, (tFormat) => tFormat.pgNestedCol)
-  tFormats: TFormat[];
+  @OneToMany(() => tFormat, (tFormat) => tFormat.pgNestedCol)
+  tFormats: tFormat[];
 }
