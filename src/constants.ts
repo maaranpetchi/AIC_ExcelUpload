@@ -22,6 +22,8 @@ export const constants = {
   colIdPattern: /Col Id\*/i,
   pageIdPattern: /Page Id/i,
   colNamePattern: /Col Name\*/i,
+  colDataType: /Col DataType\*/i,
+  colDropDownSource: /Col DropDownSource/i,
 
   //Columns to insert in tCell and tItem table
   titemColumns: {
@@ -29,44 +31,44 @@ export const constants = {
     rowType: /Row Type/i,
 
     //All Pages sheet Column headers name
-    pageIdMandatory: /Page Id\*/i,
-    pageName: /Page Name\*/i,
+    pageIdMandatory: /Page Id/i,
+    pageName: /Page Name/i,
     pageType: /Page Type/i,
-    pageEdition: /Page Edition\*/i,
-    pageOwner: /Page Owner\*/i,
+    pageEdition: /Page Edition/i,
+
     pageURL: /Page URL/i,
     pageSEO: /Page SEO/i,
 
     //All Cols sheet Column headers name
-    colIdPattern: /Col Id\*/i,
+    colIdPattern: /Col Id/i,
     pageIdPattern: /Page Id/i,
-    colNamePattern: /Col Name\*/i,
-    colDataType: /Col DataType\*/i,
+    colNamePattern: /Col Name/i,
+    colDataType: /Col DataType/i,
     colDropDownSource: /Col DropDownSource/i,
     colDefaultData: /Col DefaultData/i,
 
     //All Tokens sheet Column headers name
-    tokenPattern: /Token\*/i,
+    token: /Token/i,
 
     //All Languages sheet Column headers name
-    language: /Language\*/i,
+    language: /Language/i,
 
     //All Regions sheet Column headers name
-    region: /Region\*/i,
+    region: /Region/i,
 
     //All Suppliers sheet Column headers name
-    supplier: /Supplier\*/i,
+    supplier: /Supplier/i,
 
     //All Models sheet Column headers name
-    model: /Model\*/i,
+    model: /Model/i,
     releaseData: /Release Date/i,
 
     //All Units sheet Column headers name
-    unit: /Unit\*/i,
+    unit: /Unit/i,
     unitFactor: /Unit Factor/i,
 
     //All Labels sheet Column headers name
-    labels: /Labels\*/i,
+    labels: /Labels/i,
     valueDataType: /Value DataType/i,
     valueDropdownSource: /Value DropDownSource/i,
     valueDefaultData: /Value DefaultData/i,
@@ -76,18 +78,18 @@ export const constants = {
   //Columns to insert in tFormat table
   tformatColumns: {
     //Each Page Column headers name
-    rowId: /Row\*/i,
+    rowId: /Row/i,
     rowStatus: /Row Status/i,
     rowComment: /Row Comment/i,
 
     //All Pages sheet Column headers name
-    pageIdMandatory: /Page Id\*/i,
-    pageOwner: /Page Owner\*/i,
+    pageIdMandatory: /Page Id/i,
+    pageOwner: /Page Owner/i,
     pageStatus: /Page Status/i,
     pageComment: /Page Comment/i,
 
     //All Cols sheet Column headers name
-    colIdPattern: /Col Id\*/i,
+    colIdPattern: /Col Id/i,
     colDefaultData: /Col DefaultData/i,
     colFormula: /Col Formula/i,
     colStatus: /Col Status/i,
@@ -102,8 +104,11 @@ export const constants = {
   allcols: 'All Cols',
   allTokens: 'All Tokens',
 
-  //Section head
+  //Section head & Each page
   sectionHead: 'Section-Head',
+  eachPage: '\'Each Page',
+  dataType: /Data Type/i,
+  tokenPattern: /Token\*/i,
 
   //Sheets to insert into Database
   sheetNames: [
@@ -133,6 +138,7 @@ export const constants = {
   index: -1,
   one: 1,
   zero: 0,
+  star: '*',
   
   //Error and success message
   successMessage: 'Excel file processed successfully',
