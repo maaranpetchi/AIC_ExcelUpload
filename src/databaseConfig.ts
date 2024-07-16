@@ -1,21 +1,15 @@
-import { tPg } from './entities/tPg';
-import { tFormat } from './entities/tFormat';
-import { tRow } from './entities/tRow';
-import { tCell } from './entities/tCell';
-import { tCol } from './entities/tCol';
-import { tItem } from './entities/tItem';
-import { tTx } from './entities/tTx';
-import { tUser } from './entities/tUser';
+
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 export const databaseConfig: TypeOrmModuleOptions = {
   type: 'postgres',
-  host: 'localhost',
+  host: 'aicdesignmgm.postgres.database.azure.com',
   port: 5432,
   username: 'postgres',
-  password: 'Password@1',
-  database: 'AIC_AutoScript',
-  entities: [tPg, tFormat, tRow, tCell, tCol, tItem, tTx, tUser],
-  synchronize: false,
-  ssl: false,
+  password: 'AdENg+8[ZY',
+  database: 'postgres',
+  entities: [],
+  ssl: {
+    rejectUnauthorized: false, // This can be true if you have the CA cert
+  },
 };

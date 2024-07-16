@@ -3,14 +3,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './databaseConfig';
-import { constants } from './constants';
+import { pgPoolProvider } from './pg.pool.provider';
 @Module({
   imports: [
     TypeOrmModule.forRoot(databaseConfig,),
-    TypeOrmModule.forFeature(constants.typeORMFeature),
+    TypeOrmModule.forFeature([]),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, pgPoolProvider],
 })
 export class AppModule {
 }
