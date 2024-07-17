@@ -30,6 +30,14 @@ steps:
     targetFolder: '$(Build.ArtifactStagingDirectory)'
   displayName: 'Copy project files'
 
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.BinariesDirectory)'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/AICDesign.zip'
+    replaceExistingArchive: true
+
 - task: PublishPipelineArtifact@1
   inputs:
     artifactName: AICDesign
