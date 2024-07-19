@@ -9,14 +9,16 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express/multer';
 import * as ExcelJS from 'exceljs';
-import { Repository } from 'typeorm';
 import { Constants } from './Constants';
-import { Pool } from 'pg'; 
+import { Pool } from 'pg';
 import { AppService } from './app.service';
 
 @Controller('excel')
 export class AppController {
-  constructor(private readonly appServices: AppService, @Inject('PG_POOL') private readonly pool: Pool){}
+  constructor(
+    private readonly appServices: AppService,
+    @Inject('PG_POOL') private readonly pool: Pool,
+  ) {}
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -29,6 +31,49 @@ export class AppController {
       //--Col Id to Col name mapping
       const colData = {}; // Object to store Col ID, Page Type, Page ID, and Col Name
 
+      //Process All Languages sheet to find the Row Id of English language
+      const allLanguagesSheet = sheets.find(
+        (sheet) => sheet.name === Constants.allLanguages,
+      );
+      // Dynamically find the header row
+      let languageheaderRowIndex = Constants.index;
+      let languageheaderColIndex = Constants.index;
+      let englishRowId;
+      for (let i = Constants.one; i <= allLanguagesSheet.lastRow.number; i++) {
+        const row = allLanguagesSheet.getRow(i);
+        for (let j = Constants.one; j <= row.cellCount; j++) {
+          const cell = row.getCell(j);
+          if (cell.value && Constants.language.test(cell.value.toString())) {
+            languageheaderRowIndex = i;
+            languageheaderColIndex = j;
+            break;
+          }
+        }
+        if (
+          languageheaderRowIndex !== Constants.index &&
+          languageheaderColIndex !== Constants.index
+        )
+          break;
+      }
+      if (
+        languageheaderRowIndex !== Constants.index &&
+        languageheaderColIndex !== Constants.index
+      ) {
+        for (
+          let rowIndx = languageheaderRowIndex + Constants.one;
+          rowIndx <= allLanguagesSheet.lastRow.number;
+          rowIndx++
+        ) {
+          const rowCell = allLanguagesSheet
+            .getCell(rowIndx, languageheaderColIndex)
+            .value.toString();
+          if (rowCell == Constants.english) {
+            englishRowId = allLanguagesSheet
+              .getCell(rowIndx, languageheaderColIndex - Constants.one)
+              .value.toString();
+          }
+        }
+      }
       // Process the 'All Cols' sheet first
       const allColsSheet = sheets.find(
         (sheet) => sheet.name === Constants.allCols,
@@ -48,9 +93,17 @@ export class AppController {
       let headerRowIndex = Constants.index;
 
       // Find the indices of the headers
-      for (let rowIndex = Constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+      for (
+        let rowIndex = Constants.one;
+        rowIndex <= allColsSheet.lastRow.number;
+        rowIndex++
+      ) {
         const row = allColsSheet.getRow(rowIndex);
-        for (let colIndex = Constants.one; colIndex <= row.cellCount; colIndex++) {
+        for (
+          let colIndex = Constants.one;
+          colIndex <= row.cellCount;
+          colIndex++
+        ) {
           const cellValue = row.getCell(colIndex).value?.toString();
           if (cellValue && Constants.colIdPattern.test(cellValue)) {
             colIdIndex = colIndex;
@@ -68,11 +121,11 @@ export class AppController {
             colNameIndex = colIndex;
             headerRowIndex = rowIndex;
           }
-          if(cellValue && Constants.colDataType.test(cellValue)){
+          if (cellValue && Constants.colDataType.test(cellValue)) {
             colDataTypeIndex = colIndex;
             headerRowIndex = rowIndex;
           }
-          if(cellValue && Constants.colDropDownSource.test(cellValue)){
+          if (cellValue && Constants.colDropDownSource.test(cellValue)) {
             colDropDownSourceIndex = colIndex;
             headerRowIndex = rowIndex;
           }
@@ -92,14 +145,20 @@ export class AppController {
       }
 
       // Read the data under the headers and store it in the object
-      for (let rowIndex = headerRowIndex + Constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+      for (
+        let rowIndex = headerRowIndex + Constants.one;
+        rowIndex <= allColsSheet.lastRow.number;
+        rowIndex++
+      ) {
         const row = allColsSheet.getRow(rowIndex);
         const colId = row.getCell(colIdIndex).value?.toString();
         const pageType = row.getCell(pageTypeIndex).value?.toString();
         const pageId = row.getCell(pageIdIndex).value?.toString();
         const colName = row.getCell(colNameIndex).value?.toString();
         const colDataType = row.getCell(colDataTypeIndex).value?.toString();
-        const colDropDownSource = row.getCell(colDropDownSourceIndex).value?.toString();
+        const colDropDownSource = row
+          .getCell(colDropDownSourceIndex)
+          .value?.toString();
         if (colId && colName) {
           colData[colId] = {
             pageType,
@@ -111,16 +170,17 @@ export class AppController {
         }
       }
 
-      console.log('Col Data:', colData);
-
       // Process Col ID header and save 'tCol' table data
-      for (let rowIndex = headerRowIndex + Constants.one; rowIndex <= allColsSheet.lastRow.number; rowIndex++) {
+      for (
+        let rowIndex = headerRowIndex + Constants.one;
+        rowIndex <= allColsSheet.lastRow.number;
+        rowIndex++
+      ) {
         const row = allColsSheet.getRow(rowIndex);
         const colId = row.getCell(colIdIndex).value?.toString();
-        if(colId !== null && colId !== undefined){
+        if (colId !== null && colId !== undefined) {
           await Constants.insertCol(this.pool, Number(colId));
         }
-        
       }
 
       // Function to store the key value pair of datatype and row ID in all tokens
@@ -148,14 +208,13 @@ export class AppController {
         if (headerRowIndex !== Constants.index) break;
       }
       if (headerRowIndex === Constants.index) {
-        console.log(`Header row not found in sheet ${allTokensSheet.name}`);
-      } else {
-        console.log(`Header row found at index: ${headerRowIndex}`);
+        console.log(Constants.headerError + allTokensSheet.name);
       }
 
       // Find the start and end columns for the merged "Token" header
       let tokenColStartIndex = Constants.index;
       let tokenColEndIndex = Constants.index;
+      let urlTypeRowID;
       if (headerRowIndex !== Constants.index) {
         const headerRow = allTokensSheet.getRow(headerRowIndex);
         for (
@@ -176,7 +235,7 @@ export class AppController {
           if (cell.value && Constants.rowId.test(cell.value.toString())) {
             rowColIndex = sheetColIndex;
           }
-          if(cell.value && Constants.rowType.test(cell.value.toString())){
+          if (cell.value && Constants.rowType.test(cell.value.toString())) {
             rowTypeAllTokensColIndex = sheetColIndex;
           }
         }
@@ -185,20 +244,31 @@ export class AppController {
           tokenColEndIndex === Constants.index ||
           rowColIndex === Constants.index
         ) {
-          console.log(
-            `Token column start or end and row not found in sheet ${allTokensSheet.name}`,
-          );
-        } else {
-          console.log(
-            `Token column start index: ${tokenColStartIndex}, end index: ${tokenColEndIndex}, row column index: ${rowColIndex}`,
-          );
+          console.log(Constants.allTokenIndexError + allTokensSheet.name);
         }
       }
-
+      //Find and Store the URL Row ID 
+      for (
+        let i = headerRowIndex + Constants.one;
+        i <= allTokensSheet.lastRow.number;
+        i++
+      ) {
+        const row = allTokensSheet.getRow(i);
+        for (let j = tokenColStartIndex; j <= tokenColEndIndex; j++) {
+          const cell = row.getCell(j);
+          if (cell.value && (cell.value.toString()) === Constants.urltype) {
+              urlTypeRowID = row.getCell(rowColIndex)
+            break;
+          }
+        }
+      }
       // Identify the "DataType" row dynamically within the "Token" header columns
       let dataTypeRowIndex = Constants.index;
       let dataTypeColIndex = Constants.index;
-      if (tokenColStartIndex !== Constants.index && tokenColEndIndex !== Constants.index) {
+      if (
+        tokenColStartIndex !== Constants.index &&
+        tokenColEndIndex !== Constants.index
+      ) {
         for (
           let i = headerRowIndex + Constants.one;
           i <= allTokensSheet.lastRow.number;
@@ -213,14 +283,14 @@ export class AppController {
               break;
             }
           }
-          if (dataTypeRowIndex !== Constants.index && dataTypeColIndex !== Constants.index) break;
+          if (
+            dataTypeRowIndex !== Constants.index &&
+            dataTypeColIndex !== Constants.index
+          )
+            break;
         }
         if (dataTypeRowIndex === Constants.index) {
-          console.log(`DataType row not found in sheet ${allTokensSheet.name}`);
-        } else {
-          console.log(
-            `DataType found at row index: ${dataTypeRowIndex}, col index: ${dataTypeColIndex}`,
-          );
+          console.log(Constants.datatypeError + allTokensSheet.name);
         }
       }
       let shouldBreak = false;
@@ -277,11 +347,9 @@ export class AppController {
       for (let i = Constants.zero; i < dataType.length; i++) {
         dataTypeToRowId[dataType[i]] = RowId[i];
       }
-      console.log('Data-Type:', dataTypeToRowId);
-
       for (const sheet of sheets) {
         if (Constants.sheetNames.includes(sheet.name)) {
-          console.log(`Processing sheet: ${sheet.name}`);
+          console.log(Constants.process + sheet.name);
 
           // Process 'All Pages' sheet
           if (sheet.name === Constants.allPages) {
@@ -340,10 +408,9 @@ export class AppController {
               }
             }
 
-
-            // Iterate through all the Page ID's and insert into tPg table through insertPg 
+            // Iterate through all the Page ID's and insert into tPg table through insertPg
             for (const Pg of pageIds.slice(Constants.one)) {
-              const tpgEntity = Constants.insertPg(this.pool,Number(Pg));
+              const tpgEntity = Constants.insertPg(this.pool, Number(Pg));
             }
 
             // Create a key-value pair of page ID and page name
@@ -408,7 +475,6 @@ export class AppController {
                 }
                 nestedColumnEndIndex = sheetColIndex;
               }
-
             }
           }
 
@@ -460,17 +526,23 @@ export class AppController {
                 ? row.getCell(rowIdColumnIndex)
                 : null;
             const rowStatusCell = row.getCell(rowStatusColumnIndex);
-            const rowValue = rowIdCell ? rowIdCell.value : null;
+            let rowValue = rowIdCell ? rowIdCell.value : null;
             const rowStatusValue = rowStatusCell ? rowStatusCell.value : null;
-
-            // Skip rows with no row value when row ID column index is valid
-            if (
-              rowIdColumnIndex !== Constants.index &&
-              (rowValue === null || rowValue === undefined)
-            ) {
-              continue;
+            // Special case for "All Languages" sheet
+            if (sheet.name === Constants.allLanguages) {
+              if (rowValue === null || rowValue === undefined) {
+                const nextRowValue = await Constants.getNextRowValue(this.pool);
+                rowValue = nextRowValue;
+              }
+            } else {
+              // Skip rows with no row value when row ID column index is valid for other sheets
+              if (
+                rowIdColumnIndex !== Constants.index &&
+                (rowValue === null || rowValue === undefined)
+              ) {
+                continue;
+              }
             }
-
             // Determine row level based on row status and nested columns
             let rowLevel = Constants.one;
             if (
@@ -516,18 +588,27 @@ export class AppController {
             if (lastRowAtLevel[lastRowKey]) {
               siblingRowId = lastRowAtLevel[lastRowKey].id;
             }
-
             let newRowId = null;
-            let newRowEntity;
-            let savedRowEntity
+            let savedRowEntity;
 
             // Create a new row entity based on row value or generate a new row value
             if (rowValue !== null && rowValue !== undefined) {
-              savedRowEntity = await Constants.insertRow(this.pool, Number(rowValue), Number(pageId), rowLevel, parentRowId);
+              savedRowEntity = await Constants.insertRow(
+                this.pool,
+                Number(rowValue),
+                Number(pageId),
+                rowLevel,
+                parentRowId,
+              );
             } else {
               const nextRowValue = await Constants.getNextRowValue(this.pool);
-              savedRowEntity = await Constants.insertRow(this.pool, Number(nextRowValue), Number(pageId), rowLevel, parentRowId);
-
+              savedRowEntity = await Constants.insertRow(
+                this.pool,
+                Number(nextRowValue),
+                Number(pageId),
+                rowLevel,
+                parentRowId,
+              );
             }
 
             try {
@@ -540,7 +621,11 @@ export class AppController {
                 continue;
               }
 
-              await Constants.updateSiblingRow(this.pool, siblingRowId, newRowId);
+              await Constants.updateSiblingRow(
+                this.pool,
+                siblingRowId,
+                newRowId,
+              );
 
               // Store current row details in previousRows and lastRowAtLevel objects
               previousRows.push({
@@ -564,7 +649,11 @@ export class AppController {
 
             // Check every cell in inserted row that is present in tItemColumns or tFormatColumns to insert into tCell, tItem and tFormat
 
-            for (let colIdx = Constants.one;colIdx <= row.cellCount;colIdx++) {
+            for (
+              let colIdx = Constants.one;
+              colIdx <= row.cellCount;
+              colIdx++
+            ) {
               let isTitemColumn = false;
               let isTformatColumn = false;
               let colID;
@@ -574,108 +663,348 @@ export class AppController {
 
               const cellValue = sheet.getCell(rowIdx, colIdx).value?.toString();
 
-              if(cellValue != null && cellValue != undefined){
+              if (cellValue != null && cellValue != undefined) {
                 // Get the header cell value for the current column index
                 const headerCell = sheet.getRow(headerRowIndex).getCell(colIdx);
                 let headerCellValue = headerCell.value?.toString().trim();
                 // Remove trailing '*' if present
                 if (headerCellValue?.endsWith(Constants.star)) {
-                  headerCellValue = headerCellValue.slice(Constants.zero, Constants.index); // Remove the last character
+                  headerCellValue = headerCellValue.slice(
+                    Constants.zero,
+                    Constants.index,
+                  ); // Remove the last character
                 }
 
-                if(headerCellValue != null || headerCellValue != undefined)
-                {
+                if (headerCellValue != null || headerCellValue != undefined) {
                   for (const key in Constants.titemColumns) {
                     if (Constants.titemColumns[key].test(headerCellValue)) {
                       isTitemColumn = true;
                       break;
                     }
                   }
-                  for(const key in Constants.tformatColumns){
-                    if(Constants.tformatColumns[key].test(headerCellValue)){
+                  for (const key in Constants.tformatColumns) {
+                    if (Constants.tformatColumns[key].test(headerCellValue)) {
                       isTformatColumn = true;
                       break;
                     }
                   }
-                  if(isTitemColumn){
-                    for(const key in colData){
-                      if (colData[key].colName === headerCellValue && (colData[key].pageId == pageId || colData[key].pageType == Constants.eachPage)) {
+                  if (isTitemColumn) {
+                    for (const key in colData) {
+                      if (
+                        colData[key].colName === headerCellValue &&
+                        (colData[key].pageId == pageId ||
+                          colData[key].pageType == Constants.eachPage)
+                      ) {
                         colID = key;
                         colDataType = colData[key].colDataType;
                         colDropDownSource = colData[key].colDropDownSource;
                         break;
                       }
                     }
-                    if(colID != null && savedRowEntity != null){
-                      savedCellEntity = await Constants.insertCell(this.pool, colID, savedRowEntity);
+                    if (colID != null && savedRowEntity != null) {
+                      savedCellEntity = await Constants.insertCell(
+                        this.pool,
+                        colID,
+                        savedRowEntity,
+                      );
 
-                      // if (savedCellEntity != null && savedCellEntity != undefined) {
-                      //   if (Constants.titemColumns.pageType.test(headerCellValue)) {
-                      //     const dataType = dataTypeToRowId[colDataType];
-                          
-                      //     if (colDropDownSource && dataType) {
-                      //       // Step 1: Find the row in allTokensSheet where RowType is "node" and the Token value is colDropDownSource
-                      //       let tokenRowIndex = Constants.index;
-                      //       for (let rowIndex = Constants.one; rowIndex <= allTokensSheet.lastRow.number; rowIndex++) {
-                      //         const row = allTokensSheet.getRow(rowIndex);
-                      //         const rowTypeCell = row.getCell(rowTypeAllTokensColIndex);
-                      //         const tokenCell = row.getCell(tokenColStartIndex);
-                      
-                      //         if (rowTypeCell && tokenCell && Constants.node.test(rowTypeCell.value?.toString()) && tokenCell.value?.toString() === colDropDownSource) {
-                      //           tokenRowIndex = rowIndex;
-                      //           break;
-                      //         }
-                      //       }
-                      
+                      if (
+                        savedCellEntity != null &&
+                        savedCellEntity != undefined
+                      ) {
+                        if (
+                          Constants.titemColumns.pageType.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.rowType.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.pageEdition.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.colDataType.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.valueDataType.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.valueStatus.test(
+                            headerCellValue,
+                          )
+                        ) {
+                          const dataType = dataTypeToRowId[colDataType];
+                          // Using the dropdownSource present in the page type column and cell value find the Token ID of the cell value
+                          if (colDropDownSource && dataType) {
+                            // Step 1: Find the row in allTokensSheet where RowType is "node" and the Token value is colDropDownSource
+                            let tokenRowIndex = Constants.index;
+                            for (
+                              let rowIndex = Constants.one;
+                              rowIndex <= allTokensSheet.lastRow.number;
+                              rowIndex++
+                            ) {
+                              const row = allTokensSheet.getRow(rowIndex);
+                              const rowTypeCell = row.getCell(
+                                rowTypeAllTokensColIndex,
+                              );
+                              const tokenCell = row.getCell(tokenColStartIndex);
 
-                      //       if (tokenRowIndex !== Constants.index) {
-                      //         // Step 2: Retrieve the values under the found token
-                      //         const tokenValues = [];
-                      //         for (
-                      //           let rowIdx = tokenRowIndex + Constants.one;
-                      //           rowIdx <= allTokensSheet.lastRow.number;
-                      //           rowIdx++
-                      //         ) {
-                      //           for (let colIndex = tokenColStartIndex; colIndex <= tokenColEndIndex; colIndex++) {
-                      //             const cell = allTokensSheet.getRow(rowIdx).getCell(colIndex);
-                      //             if (cell && cell.value) {
-                      //               tokenValues.push(cell.value.toString());
-                      //             }
-                      //           }
-                      //         }
-                              
-                      
-                      //         // Step 3: Check if cellValue matches any of these token values
-                      //         const matchedRowIndex = tokenValues.findIndex(value => value === cellValue);
-                      
-                      //         if (matchedRowIndex !== -1) {
-                      //           // Step 4: Fetch the Row ID
-                      //           const rowIDCell = allTokensSheet.getRow(matchedRowIndex).getCell(rowColIndex);
-                      //           if (rowIDCell && rowIDCell.value) {
-                      //             const rowIDValue = rowIDCell.value.toString();
-                                  
-                      //             // Use the rowIDValue for your logic
-                      //             console.log('Matched Row ID Value:', rowIDValue);
-                      //             // You can now proceed with your logic using rowIDValue
-                      //           }
-                      //         }
-                      //       }
-                      //     }
-                      //   }
-                      // }
-                      
-                      
+                              if (
+                                rowTypeCell &&
+                                tokenCell &&
+                                Constants.node.test(
+                                  rowTypeCell.value?.toString(),
+                                ) &&
+                                tokenCell.value?.toString() ===
+                                  colDropDownSource
+                              ) {
+                                tokenRowIndex = rowIndex;
+                                break;
+                              }
+                            }
+
+                            if (tokenRowIndex !== Constants.index) {
+                              // Step 2: Retrieve the values under the found token and store them with their Row IDs
+                              const tokenValueToRowIdMap: Record<
+                                string,
+                                string
+                              > = {};
+                              let toBreak = false;
+                              for (
+                                let rowIdx = tokenRowIndex + Constants.one;
+                                rowIdx <= allTokensSheet.lastRow.number;
+                                rowIdx++
+                              ) {
+                                for (
+                                  let colIndex = tokenColStartIndex;
+                                  colIndex <= tokenColEndIndex;
+                                  colIndex++
+                                ) {
+                                  const cell = allTokensSheet
+                                    .getRow(rowIdx)
+                                    .getCell(colIndex);
+                                  if (
+                                    colIndex === tokenColStartIndex &&
+                                    cell.value != null &&
+                                    cell.value != undefined
+                                  ) {
+                                    toBreak = true;
+                                    break;
+                                  }
+                                  if (toBreak) break;
+                                  if (cell && cell.value) {
+                                    const tokenValue = cell.value.toString();
+                                    const rowIDCell = allTokensSheet
+                                      .getRow(rowIdx)
+                                      .getCell(rowColIndex);
+                                    if (rowIDCell && rowIDCell.value) {
+                                      const rowIDValue =
+                                        rowIDCell.value.toString();
+                                      tokenValueToRowIdMap[tokenValue] =
+                                        rowIDValue;
+                                    }
+                                  }
+                                }
+                              }
+
+                              // Step 3: Split cellValue and map each value to corresponding RowID
+                              const cellValues = cellValue.split(';');
+                              const matchedRowIds = cellValues
+                                .map((val) => tokenValueToRowIdMap[val.trim()])
+                                .filter(Boolean);
+
+                              if (matchedRowIds.length > 0) {
+                                try {
+                                  // Insert corresponding tItem records and collect Item IDs
+                                  const itemIds = [];
+                                  for (const rowIDValue of matchedRowIds) {
+                                    const insertedItemId =
+                                      await Constants.insertItem(
+                                        this.pool,
+                                        dataType,
+                                        Number(rowIDValue),
+                                      );
+                                    itemIds.push(insertedItemId);
+                                  }
+                                  // console.log("Item IDs", itemIds);
+
+                                  // Update the saved cell entity with the array of Item IDs
+                                  await Constants.updateCellItemIDs(
+                                    this.pool,
+                                    savedCellEntity.Cell,
+                                    itemIds,
+                                  );
+                                  // console.log('Updated cell with Item IDs:', savedCellEntity.Cell);
+                                } catch (error) {
+                                  console.error(
+                                    'Error processing Item IDs:',
+                                    error,
+                                  );
+                                }
+                              }
+                            }
+                          }
+                        }
+                        if (
+                          Constants.titemColumns.pageId.test(headerCellValue) ||
+                          Constants.titemColumns.colId.test(headerCellValue)
+                        ) {
+                          const dataType = dataTypeToRowId[colDataType];
+                          try {
+                            const itemIds = [];
+                            const insertedItemId = await Constants.insertItem(
+                              this.pool,
+                              dataType,
+                              Number(cellValue),
+                            );
+                            itemIds.push(insertedItemId);
+                            // console.log("Item IDs", itemIds);
+                            await Constants.updateCellItemIDs(
+                              this.pool,
+                              savedCellEntity.Cell,
+                              itemIds,
+                            );
+                            // console.log('Updated cell with Item IDs:', savedCellEntity.Cell);
+                          } catch (error) {
+                            console.error('Error processing Item IDs:', error);
+                          }
+                        }
+                        if (
+                          Constants.titemColumns.releaseDate.test(
+                            headerCellValue,
+                          )
+                        ) {
+                          const dataType = dataTypeToRowId[colDataType];
+                          try {
+                            const itemIds = [];
+                            const dateObj = new Date(cellValue);
+                            const formattedDate = dateObj
+                              .toISOString()
+                              .split('T')[0]; // Gets the date in 'YYYY-MM-DD' format
+                            const insertedItemId =
+                              await Constants.insertDateItem(
+                                this.pool,
+                                dataType,
+                                formattedDate,
+                              );
+                            itemIds.push(insertedItemId);
+                            // console.log("Item IDs", itemIds);
+                            await Constants.updateCellItemIDs(
+                              this.pool,
+                              savedCellEntity.Cell,
+                              itemIds,
+                            );
+                            // console.log('Updated cell with Item IDs:', savedCellEntity.Cell);
+                          } catch (error) {
+                            console.error('Error processing Item IDs:', error);
+                          }
+                        }
+                        if (
+                          Constants.titemColumns.colDropDownSource.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.valueDropdownSource.test(
+                            headerCellValue,
+                          )
+                        ) {
+                        }
+                        if (
+                          Constants.titemColumns.pageName.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.pageSEO.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.colName.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.language.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.region.test(headerCellValue) ||
+                          Constants.titemColumns.supplier.test(
+                            headerCellValue,
+                          ) ||
+                          Constants.titemColumns.token.test(headerCellValue) ||
+                          Constants.titemColumns.model.test(headerCellValue) ||
+                          Constants.titemColumns.unit.test(headerCellValue) ||
+                          Constants.titemColumns.labels.test(headerCellValue) ||
+                          Constants.titemColumns.valueFormula.test(
+                            headerCellValue,
+                          )
+                        ) {
+                          const dataType = dataTypeToRowId[colDataType];
+                          // Split cellValue and insert each split value into tItem
+                          const cellValues = cellValue
+                            .split(';')
+                            .map((val) => val.trim())
+                            .filter(Boolean);
+
+                          if (cellValues.length > 0) {
+                            try {
+                              // Insert corresponding tItem records and collect Item IDs
+                              const itemIds = [];
+                              for (const value of cellValues) {
+                                const json = JSON.stringify({
+                                  [englishRowId]: value,
+                                });
+                                const insertedItemId =
+                                  await Constants.insertJsonItem(
+                                    this.pool,
+                                    dataType,
+                                    json,
+                                  );
+                                itemIds.push(insertedItemId);
+                              }
+
+                              // Update the saved cell entity with the array of Item IDs
+                              await Constants.updateCellItemIDs(
+                                this.pool,
+                                savedCellEntity.Cell,
+                                itemIds,
+                              );
+                            } catch (error) {
+                              console.error(
+                                'Error processing Item IDs:',
+                                error,
+                              );
+                            }
+                          }
+                        }
+                        if(Constants.titemColumns.pageURL.test(headerCellValue)){
+                          const dataType = dataTypeToRowId[colDataType];
+                          try {
+                            // Insert corresponding tItem records and collect Item IDs
+                              const json = JSON.stringify({
+                                [urlTypeRowID]: cellValue,
+                              });
+                              const insertedItemId =
+                                await Constants.insertJsonItem(
+                                  this.pool,
+                                  dataType,
+                                  json,
+                                );
+                            // Update the saved cell entity with the array of Item IDs
+                            await Constants.updateCellItemIDs(
+                              this.pool,
+                              savedCellEntity.Cell,
+                              insertedItemId,
+                            );
+                          } catch (error) {
+                            console.error(
+                              'Error processing Item IDs:',
+                              error,
+                            );
+                          }
+                        }
+                      }
                     }
                   }
-                  if(isTformatColumn){
-
-          
+                  if (isTformatColumn) {
                   }
                 }
               }
             }
           }
-
           // Update sibling rows to null for lastChildRow
           for (let key in lastRowAtLevel) {
             const rowId = lastRowAtLevel[key].id;
@@ -694,4 +1023,4 @@ export class AppController {
       );
     }
   }
-}
+  }

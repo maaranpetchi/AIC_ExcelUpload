@@ -15,19 +15,19 @@ export class Constants {
   static readonly colNamePattern = /Col Name\*/i;
   static readonly colDataType = /Col DataType\*/i;
   static readonly colDropDownSource = /Col DropDownSource/i;
+  static readonly language = /Language\*/i;
 
   // Columns to insert in tCell and tItem table
   static readonly titemColumns = {
     rowType: /Row Type/i,
-    pageIdMandatory: /Page Id/i,
     pageName: /Page Name/i,
     pageType: /Page Type/i,
     pageEdition: /Page Edition/i,
     pageURL: /Page URL/i,
     pageSEO: /Page SEO/i,
-    colIdPattern: /Col Id/i,
-    pageIdPattern: /Page Id/i,
-    colNamePattern: /Col Name/i,
+    colId: /Col Id/i,
+    pageId: /Page Id/i,
+    colName: /Col Name/i,
     colDataType: /Col DataType/i,
     colDropDownSource: /Col DropDownSource/i,
     colDefaultData: /Col DefaultData/i,
@@ -36,7 +36,7 @@ export class Constants {
     region: /Region/i,
     supplier: /Supplier/i,
     model: /Model/i,
-    releaseData: /Release Date/i,
+    releaseDate: /Release Date/i,
     unit: /Unit/i,
     unitFactor: /Unit Factor/i,
     labels: /Labels/i,
@@ -52,11 +52,11 @@ export class Constants {
     rowId: /Row/i,
     rowStatus: /Row Status/i,
     rowComment: /Row Comment/i,
-    pageIdMandatory: /Page Id/i,
+    pageId: /Page Id/i,
     pageOwner: /Page Owner/i,
     pageStatus: /Page Status/i,
     pageComment: /Page Comment/i,
-    colIdPattern: /Col Id/i,
+    colId: /Col Id/i,
     colDefaultData: /Col DefaultData/i,
     colFormula: /Col Formula/i,
     colStatus: /Col Status/i,
@@ -72,10 +72,14 @@ export class Constants {
 
   // Section head & Each page
   static readonly sectionHead = 'Section-Head';
-  static readonly eachPage = '\'Each Page';
+  static readonly eachPage = 'Each Page';
   static readonly dataType = /Data Type/i;
   static readonly tokenPattern = /Token\*/i;
   static readonly node = /Node/i;
+  static readonly dds = 'DDS-Type';
+  static readonly allLanguages = 'All Languages';
+  static readonly english = 'English';
+  static readonly urltype = 'URL Type';
 
   // Sheets to insert into Database
   static readonly sheetNames = [
@@ -110,14 +114,17 @@ export class Constants {
   static readonly star = '*';
 
   // Error and success messages
-  static readonly successMessage = 'Excel file processed successfully';
-  static readonly serverError = 'Internal server error';
-  static readonly rowError = 'Error inserting row:';
-  static readonly emptyRowError = 'Error: Saved row entity does not have a row value';
-  static readonly rowStatusError = 'Row-Status column not found in sheet';
-  static readonly pageIdError = 'does not exist in the referenced table';
-  static readonly headerError = 'Header row not found in sheet';
-  static readonly allColsError = 'All Cols Sheet not found';
+  static readonly successMessage = 'Excel file processed successfully ';
+  static readonly process ='Processing sheet: '
+  static readonly serverError = 'Internal server error ';
+  static readonly rowError = 'Error inserting row: ';
+  static readonly emptyRowError = 'Error: Saved row entity does not have a row value ';
+  static readonly rowStatusError = 'Row-Status column not found in sheet ';
+  static readonly pageIdError = 'does not exist in the referenced table ';
+  static readonly headerError = 'Header row not found in sheet ';
+  static readonly allColsError = 'All Cols Sheet not found ';
+  static readonly allTokenIndexError ='Token column start or end and row not found in sheet ';
+  static readonly datatypeError ='DataType row not found in sheet ';
 
   // Static method to insert a page ID into the tPg table
   static async insertPg(pool: any, PG: number) {
@@ -129,7 +136,7 @@ export class Constants {
     await pool.query(query);
   }
 
-   // Combined method to find a page ID in the tPg table
+   // static method to find a page ID in the tPg table
    static async findPg(pool: any, pageId: number) {
     const query = {
       text: `SELECT * FROM public."tPg" WHERE "Pg" = $1`,
@@ -150,6 +157,7 @@ export class Constants {
     }
   }
 
+  // Static method to insert the record into the tRow table
   static async insertRow(pool:any, row: number, pg: number, rowLevel: number, parentRow: number){
     const query = {
       text: `INSERT INTO public."tRow" ("Row", "Pg","RowLevel", "ParentRow") VALUES($1, $2, $3, $4) RETURNING "Row"`,
@@ -232,4 +240,84 @@ export class Constants {
       throw error;
     }
   }
+
+  //Static method to execute the insert query for tItem table
+  static async insertItem(pool:any, dataType: number, object: number ){
+    const query = {
+      text: `INSERT INTO public."tItem" ("DataType", "Object")
+            VALUES($1, $2) RETURNING "Item"`,
+      values: [dataType, object],
+    }
+    try {
+      // Execute the insert query and return the new row ID
+      const result = await pool.query(query);
+      return result.rows[0].Item;
+    } catch (error) {
+      console.error(this.rowError, error);
+      throw error;
+    }
+  }
+
+  //Static method to execute the insert query for tItem table
+  static async insertJsonItem(pool:any, dataType: number, json: string ){
+    const query = {
+      text: `INSERT INTO public."tItem" ("DataType", "JSON")
+            VALUES($1, $2) RETURNING "Item"`,
+      values: [dataType, json],
+    }
+    try {
+      // Execute the insert query and return the new row ID
+      const result = await pool.query(query);
+      return result.rows[0].Item;
+    } catch (error) {
+      console.error(this.rowError, error);
+      throw error;
+    }
+  }
+
+  //Static method to execute the insert query for tItem table
+  static async insertDateItem(pool:any, dataType: number, dateTime: string ){
+    const query = {
+      text: `INSERT INTO public."tItem" ("DataType", "DateTime")
+            VALUES($1, $2) RETURNING "Item"`,
+      values: [dataType, dateTime],
+    }
+    try {
+      // Execute the insert query and return the new row ID
+      const result = await pool.query(query);
+      return result.rows[0].Item;
+    } catch (error) {
+      console.error(this.rowError, error);
+      throw error;
+    }
+  }
+
+  // Static method to update the ItemIDs array in the tCell table
+static async updateCellItemIDs(pool: any, cellId: number, newItemIds: number[]) {
+  const queryFetch = {
+    text: `SELECT "Items" FROM public."tCell" WHERE "Cell" = $1`,
+    values: [cellId],
+  };
+
+  try {
+    const result = await pool.query(queryFetch);
+    const currentItems = result.rows[0]?.Items || [];
+
+    // Append the new ItemIDs to the array
+    const updatedItems = [...currentItems, ...newItemIds];
+
+    const queryUpdate = {
+      text: `UPDATE public."tCell" SET "Items" = $1 WHERE "Cell" = $2`,
+      values: [updatedItems, cellId],
+    };
+
+    // Execute the update query
+    await pool.query(queryUpdate);
+  } catch (error) {
+    console.error('Error updating ItemIDs in tCell record:', error);
+    throw error;
+  }
+}
+
+
 }
