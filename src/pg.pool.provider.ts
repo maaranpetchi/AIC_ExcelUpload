@@ -4,10 +4,10 @@ import { Pool } from 'pg';
 //   provide: 'PG_POOL',
 //   useFactory: async () => {
 //     const pool = new Pool({
-//       user: 'postgres',
+//       user: 'azuresu',
 //       host: 'aicdesignmgm.postgres.database.azure.com',
 //       database: 'postgres',
-//       password: 'AdENg+8[ZY',
+//       password: 'Krypto$@123',
 //       port: 5432,
 //       searchPath: 'public',
 //       ssl: {

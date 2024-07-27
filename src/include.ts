@@ -17,6 +17,7 @@ export const constants = {
   colNamePattern: /Col Name\*/i,
   colDataType: /Col DataType\*/i,
   colDropDownSource: /Col DropDownSource/i,
+  colStatus: 'Col Status',
   language: /Language\*/i,
 
   // Columns to insert in tCell and tItem table
@@ -87,8 +88,20 @@ export const constants = {
   label: /Labels\*/i,
   object: 'object',
   richText: 'richText',
-  
+  admin: 'Admin',
+  adminUserType: 'Vendor',
+  userType: 'User Type',
+  objectType: 'Object',
+  defaultExpandLevel: 'Default Expand Level',
+  statuses: 'Statuses',
+  nested: 'Nested',
+  page: 'Page',
+  allUnits: 'All Units',
+  unit: /Unit\*/,
 
+  //tFormat table columns for dynamic update
+  comment: 'Comment',
+  status: 'Status',
 
   // Sheets to insert into Database
   sheetNames: [
@@ -137,16 +150,22 @@ export const constants = {
   allColsError: 'All Cols Sheet not found ',
   allTokenIndexError: 'Token column start or end and row not found in sheet ',
   allLabelsIndexError: 'Label column start or end and row not found in sheet ',
-  datatypeError: 'DataType row not found in sheet ',
+  datatypeError: 'DataType or UserType or Object or Statuses row not found in sheet ',
   tCellUpdateError: 'Error updating ItemIDs in tCell record:',
   itemIdError: 'Error processing Item IDs:',
   updatingSiblingRowToNullError: 'Error updating siblingRow to null: ',
   tCellRecordError: 'Error saving tCell record:',
   noItemIdtoUpdatetCellError: 'No item IDs found to update tCell',
+  siblingRowUpdateError: 'Error updating sibling row:',
+  userNotFoundError: 'UserId or UserType not found ',
+  tFormatForRowError: 'Error Inserting tFormat for tRow record',
+  tFormatUpdateError: 'Error updating the tFormat for column ',
+  tPgError: 'Error inserting Page Id in tPg table',
+  tFormatForPageError: 'Error inserting tFormat record for page ',
 
   //Sql query texts
-    disableForeignKeyQuery : `ALTER TABLE "tRow" DISABLE TRIGGER ALL; ALTER TABLE "tItem" DISABLE TRIGGER ALL;`,
-    enableForeignKeyQuery : `ALTER TABLE "tRow" ENABLE TRIGGER ALL; ALTER TABLE "tItem" ENABLE TRIGGER ALL;`,
+    disableForeignKeyQuery : `ALTER TABLE "tRow" DISABLE TRIGGER ALL; ALTER TABLE "tCell" DISABLE TRIGGER ALL; ALTER TABLE "tItem" DISABLE TRIGGER ALL; ALTER TABLE "tUser" DISABLE TRIGGER ALL; ALTER TABLE "tFormat" DISABLE TRIGGER ALL;`,
+    enableForeignKeyQuery : `ALTER TABLE "tRow" ENABLE TRIGGER ALL; ALTER TABLE "tCell" ENABLE TRIGGER ALL; ALTER TABLE "tItem" ENABLE TRIGGER ALL; ALTER TABLE "tUser" ENABLE TRIGGER ALL; ALTER TABLE "tFormat" ENABLE TRIGGER ALL;`,
     inserttColQuery :  `INSERT INTO public."tCol" ("Col") VALUES ($1)`,
     insertDefaulttRowQuery : `INSERT INTO public."tRow" ("Row", "RowLevel") VALUES($1, $2) RETURNING "Row"`,
     inserttPgQuery : `INSERT INTO public."tPg" ("Pg") VALUES ($1)`,
@@ -159,6 +178,10 @@ export const constants = {
     updateItemIdsIntCellQuery : `UPDATE public."tCell" SET "Items" = $1 WHERE "Cell" = $2`,
     inserttItemWithDateTimeQuery : `INSERT INTO public."tItem" ("DataType", "DateTime") VALUES($1, $2) RETURNING "Item"`,
     inserttItemWithNumberQuery : `INSERT INTO public."tItem" ("DataType", "Num") VALUES($1, $2) RETURNING "Item"`,
-    insertItemWithJsonQuery :  `INSERT INTO public."tItem" ("DataType", "JSON") VALUES($1, $2) RETURNING "Item"`,
+    inserttItemWithJsonQuery :  `INSERT INTO public."tItem" ("DataType", "JSON") VALUES($1, $2) RETURNING "Item"`,
     updateSiblingRowIntRowToNull :  `UPDATE public."tRow" SET "SiblingRow" = NULL WHERE "Row" = $1`,
+    inserttUserQuery : `INSERT INTO public."tUser" ("User", "UserType") VALUES($1, $2) RETURNING "User"`,
+    inserttFormatForRowQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "Owner") VALUES($1, $2, $3, $4) RETURNING "Format"`,
+    updateAnyColumnsIntFormatQuery : (columnName: string) => { return `UPDATE public."tFormat" SET "${columnName}" = $1 WHERE "Format" = $2;`}, 
+    inserttFormatForPageQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "Owner", "PgExpand", "PgNestedCol") VALUES($1, $2, $3, $4, $5, $6) RETURNING "Format"`,
 };
