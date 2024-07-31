@@ -103,6 +103,8 @@ export const constants = {
   unit: /Unit\*/,
   nonInsertRow: 'N/A',
   column: 'Column',
+  item: 'Item',
+  cell: 'Cell',
   validateData: 'Validate Data',
 
   //tFormat table columns for dynamic update
@@ -142,6 +144,7 @@ export const constants = {
   index: -1,
   one: 1,
   zero: 0,
+  two: 2,
   star: '*',
   semicolon: ';',
   t: 'T',
@@ -195,4 +198,6 @@ export const constants = {
     updateAnyColumnsIntFormatQuery : (columnName: string) => { return `UPDATE public."tFormat" SET "${columnName}" = $1 WHERE "Format" = $2;`}, 
     inserttFormatForPageQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "PgExpand", "PgNestedCol") VALUES($1, $2, $3, $4, $5) RETURNING "Format"`,
     inserttFormatForColQuery: `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "ColOrder", "Owner", "Status", "Formula", "Comment") VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING "Format"`,
+    inserttFormatForItemQuery: `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "ItemOrder", "Owner") VALUES($1, $2, $3, $4, $5) RETURNING "Format"`,
+    inserttFormatForDefaultColQuery:  `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "Default", "Owner") VALUES($1, $2, $3, $4, $5) RETURNING "Format"`,
 };

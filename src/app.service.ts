@@ -706,33 +706,6 @@ export class AppService {
                 ? row.getCell(rowIdColumnIndex)
                 : null;
             let rowValue = rowIdCell ? rowIdCell.value : null;
-            // const rowStatusCell = row.getCell(rowStatusColumnIndex);
-            // const pageIdCell = pageIdColumnIndex !== constants.index?row.getCell(pageIdColumnIndex): null;
-            // const pageIdValue = pageIdCell !== null && pageIdCell.value !== null && pageIdCell.value !== undefined 
-            //     ? pageIdCell.value.toString() : null;
-            // const colIdCell = colIdColumnIndex !== constants.index? row.getCell(colIdColumnIndex): null;
-            // const colIdValue = colIdCell !== null && colIdCell.value !== null && colIdCell.value !== undefined 
-            // ? colIdCell.value.toString() : null;
-            // const pageTypeCell = pageTypeIndex !== constants.index? row.getCell(pageTypeIndex): null;
-            // const pageTypeValue = pageTypeCell !== null && pageTypeCell.value !== null && pageTypeCell.value !== undefined 
-            // ? pageTypeCell.value.toString() : null;
-
-            // const rowStatusValue = rowStatusCell ? rowStatusCell.value : null;
-            // const colStatusCell = colStatusColIndex !== constants.index? row.getCell(colStatusColIndex): null;
-            // const colStatusValue = colStatusCell !== null && colStatusCell.value !== null && colStatusCell.value !== undefined 
-            // ? colStatusCell.value.toString() : null;
-
-            // const colCommentCell = colCommentColIndex !== constants.index? row.getCell(colCommentColIndex): null;
-            // const colCommentValue = colCommentCell !== null && colCommentCell.value !== null && colCommentCell.value !== undefined 
-            // ? colCommentCell.value.toString() : null;
-
-            // const colFormulaCell = colFormulaColIndex !== constants.index? row.getCell(colFormulaColIndex): null;
-            // const colFormulaValue = colFormulaCell !== null && colFormulaCell.value !== null && colFormulaCell.value !== undefined 
-            // ? colFormulaCell.value.toString() : null;
-
-            // const colOwnerCell = colOwnerColIndex !== constants.index? row.getCell(colOwnerColIndex): null;
-            // const colOwnerValue = colOwnerCell !== null && colOwnerCell.value !== null && colOwnerCell.value !== undefined 
-            // ? colOwnerCell.value.toString() : null;
             const rowStatusValue = this.getCellValue(row, rowStatusColumnIndex);
             const pageIdValue = this.getCellValue(row, pageIdColumnIndex);
             const colIdValue = this.getCellValue(row, colIdColumnIndex);
@@ -1025,6 +998,7 @@ export class AppService {
               let colDataType;
               let colDropDownSource;
               let savedCellEntity;
+              const cellObjectType = objectTypeToRowId[constants.cell];
               const cell: any = sheet.getCell(rowIdx, colIdx).value;
 
               let cellValue: any = null;
@@ -1107,6 +1081,8 @@ export class AppService {
                         savedCellEntity != null &&
                         savedCellEntity != undefined
                       ) {
+                        // Object type of Item to store in tFormat.ObjectType
+                        const itemObjectType = objectTypeToRowId[constants.item];
                         if (
                           constants.titemColumns.pageType === headerCellValue ||
                           constants.titemColumns.rowType === headerCellValue ||
@@ -1195,10 +1171,11 @@ export class AppService {
                                 .map((val) => tokenValueToRowIdMap[val.trim()])
                                 .filter(Boolean);
 
-                              if (matchedRowIds.length > 0) {
+                              if (matchedRowIds.length > constants.zero) {
                                 try {
                                   // Insert corresponding tItem records and collect Item IDs
                                   const itemIds = [];
+                                  let itemOrder = constants.one;
                                   for (const rowIDValue of matchedRowIds) {
                                     const inserttItemWithObjectQuery = {
                                       text: constants.inserttItemWithObjectQuery,
@@ -1208,9 +1185,18 @@ export class AppService {
                                       // Execute the insert query and return the new row ID
                                       const result = await this.pool.query(inserttItemWithObjectQuery);
                                       const insertedItemId = result.rows[0].Item;
+                                      if(insertedItemId !== null && matchedRowIds.length >= constants.two)
+                                      {
+                                        const inserttFormatForItemQuery = {
+                                          text: constants.inserttFormatForItemQuery,
+                                          values: [userId,itemObjectType, insertedItemId, itemOrder, userId],
+                                        }
+                                        await this.pool.query(inserttFormatForItemQuery);
+                                      }
                                       itemIds.push(insertedItemId);
+                                      itemOrder++;
                                     } catch (error) {
-                                      console.error(constants.rowError, error);
+                                      console.error(constants.itemIdError, error);
                                       throw error;
                                     }
                                   }
@@ -1412,12 +1398,22 @@ export class AppService {
                             try {
                               // Insert corresponding tItem records and collect Item IDs
                               const itemIds = [];
+                              let itemOrder = constants.one;
                               for (const value of cellValues) {
                                 const json = JSON.stringify({
                                   [englishRowId]: value,
                                 });
                                 const insertedItemId = await this.insertItemWithJson(dataType, json);
+                                if(insertedItemId !== null && cellValues.length >= constants.two)
+                                {
+                                  const inserttFormatForItemQuery = {
+                                    text: constants.inserttFormatForItemQuery,
+                                    values: [userId,itemObjectType, insertedItemId, itemOrder, userId],
+                                  }
+                                  await this.pool.query(inserttFormatForItemQuery);
+                                }
                                 itemIds.push(insertedItemId);
+                                itemOrder++;
                               }
 
                               // Update the saved cell entity with the array of Item IDs
@@ -1549,7 +1545,17 @@ export class AppService {
                       }
                       }
                     }
-
+                    if((constants.tformatColumns.valueDefaultData === headerCellValue || constants.tformatColumns.colDefaultData === headerCellValue) && savedCellEntity !== null){
+                      const inserttFormatForDefaultColQuery = {
+                        text: constants.inserttFormatForDefaultColQuery,
+                        values: [userId, cellObjectType, savedCellEntity.Cell, savedCellEntity.Cell, userId],
+                      }
+                  try{
+                      await this.pool.query(inserttFormatForDefaultColQuery);
+                      }catch(error){
+                        console.error(constants.tFormatUpdateError, constants.status, error,);
+                      }
+                    }
                   }
                 }
               }
