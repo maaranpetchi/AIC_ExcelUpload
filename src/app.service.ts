@@ -103,7 +103,7 @@ export class AppService {
           colIndex++
         ) {
           const cellValue = row.getCell(colIndex).value?.toString();
-          if (cellValue && constants.colIdPattern.test(cellValue)) {
+          if (cellValue && constants.colId.test(cellValue)) {
             colIdIndex = colIndex;
             headerRowIndex = rowIndex;
           }
@@ -111,11 +111,11 @@ export class AppService {
             pageTypeIndex = colIndex;
             headerRowIndex = rowIndex;
           }
-          if (cellValue && constants.pageIdPattern.test(cellValue)) {
+          if (cellValue && constants.pageId.test(cellValue)) {
             pageIdIndex = colIndex;
             headerRowIndex = rowIndex;
           }
-          if (cellValue && constants.colNamePattern.test(cellValue)) {
+          if (cellValue && constants.colName.test(cellValue)) {
             colNameIndex = colIndex;
             headerRowIndex = rowIndex;
           }
@@ -174,23 +174,6 @@ export class AppService {
           };
         }
       }
-     
-      // Process Col ID header and save 'tCol' table data
-      for (
-        let rowIndex = headerRowIndex + constants.one;
-        rowIndex <= allColsSheet.lastRow.number;
-        rowIndex++
-      ) {
-        const row = allColsSheet.getRow(rowIndex);
-        const colId = row.getCell(colIdIndex).value?.toString();
-        if (colId !== null && colId !== undefined) {
-          const insertTColQuery = {
-            text: constants.inserttColQuery,
-            values: [colId]
-          };
-          await this.pool.query(insertTColQuery);
-        }
-      }
 
       // Function to store the key value pair of datatype and row ID in all tokens
 
@@ -226,6 +209,7 @@ export class AppService {
       let tokenColEndIndex = constants.index;
       let urlTypeRowID = null;
       let ddsTypeRowID = null;
+      let formulaTypeRowID = null;
       if (headerRowIndex !== constants.index) {
         const headerRow = allTokensSheet.getRow(headerRowIndex);
         for (
@@ -331,7 +315,10 @@ export class AppService {
           if (cell.value && (cell.value.toString()) === constants.ddstype) {
             ddsTypeRowID = row.getCell(rowAllTokensColIndex).value.toString();
           }
-          if (urlTypeRowID !== null && ddsTypeRowID !== null) {
+          if (cell.value && (cell.value.toString()) === constants.validateData){
+            formulaTypeRowID = row.getCell(rowAllTokensColIndex).value.toString();
+          }
+          if (urlTypeRowID !== null && ddsTypeRowID !== null && formulaTypeRowID !== null) {
             break;
           }
         }
@@ -506,7 +493,8 @@ export class AppService {
           text: constants.inserttUserQuery,
           values: [userId, userTypeRowId]
         };
-        const adminUser = await this.pool.query(inserttUserQuery);
+        const adminUserRecord = await this.pool.query(inserttUserQuery);
+        const adminUser = adminUserRecord.rows[0].User;
       }
       else{
         console.log(constants.userNotFoundError);
@@ -580,42 +568,6 @@ export class AppService {
                 }
               }
             }
-            let pagetFormatId;
-            // Iterate through all the Page ID's and insert into tPg table through insertPg
-            for (const Pg of pageIds.slice(constants.one)) {
-              const inserttPgQuery = {
-                text: constants.inserttPgQuery,
-                values: [Pg]
-              };
-              try{
-                await this.pool.query(inserttPgQuery);
-              }
-              catch(error){
-                console.error(constants.tPgError, error);
-              }
-            // Method to Find the Nested Column ID in a page.
-            let nestedColId;
-            for (const colId in colData) {
-              const col = colData[colId];
-              if (col.pageId === Pg && col.colStatus.includes(constants.nested)) {
-                nestedColId = colId;
-                break;
-              }
-            }
-            // Insert a tFormat record for each Page in all pages sheet.
-            const pgObjectType = objectTypeToRowId[constants.page]
-            const inserttFormatForPageQuery = {
-              text: constants.inserttFormatForPageQuery,
-              values: [userId, pgObjectType, Pg, userId, defaultPgExpandLevel, nestedColId]
-            };
-            try{
-              const pagetFormatRecord = await this.pool.query(inserttFormatForPageQuery);
-              pagetFormatId = pagetFormatRecord.rows[0].Format;  
-            }
-            catch(error){
-              console.error(constants.tFormatForPageError, error);
-            }
-            }
             // Create a key-value pair of page ID and page name
             for (let i = constants.zero; i < pageIds.length; i++) {
               pageIdToNameMap[pageNames[i]] = pageIds[i];
@@ -655,6 +607,13 @@ export class AppService {
           let rowStatusColumnIndex = constants.index;
           let nestedColumnStartIndex = constants.index;
           let nestedColumnEndIndex = constants.index;
+          let pageIdColumnIndex = constants.index;
+          let colIdColumnIndex = constants.index;
+          let pageTypeIndex = constants.index;
+          let colStatusColIndex = constants.index;
+          let colFormulaColIndex = constants.index;
+          let colCommentColIndex = constants.index;
+          let colOwnerColIndex = constants.index;
           let nestedColumn = constants.nestedColumns[sheet.name];
 
           // Iterate through header row to identify specific columns
@@ -664,14 +623,29 @@ export class AppService {
             sheetColIndex++
           ) {
             const cell = headerRow.getCell(sheetColIndex);
-            if (cell.value) {
-              if (constants.rowId.test(cell.value.toString())) {
+            const cellValue = cell.value ? cell.value.toString().trim(): null;
+            if (cellValue && cellValue !== null) {
+              if (constants.rowId.test(cellValue)) {
                 rowIdColumnIndex = sheetColIndex;
-              } else if (constants.rowStatus.test(cell.value.toString())) {
+              } else if (constants.rowStatus.test(cellValue)) {
                 rowStatusColumnIndex = sheetColIndex;
+              } else if(constants.pageId.test(cellValue)){
+                pageIdColumnIndex = sheetColIndex;
+              } else if(constants.colId.test(cellValue)){
+                colIdColumnIndex = sheetColIndex;
+              } else if(constants.pageType.test(cellValue)){
+                pageTypeIndex = sheetColIndex;
+              } else if(constants.colComment === cellValue){
+                colCommentColIndex = sheetColIndex;
+              } else if(constants.colStatus === cellValue){
+                colStatusColIndex = sheetColIndex;
+              } else if(constants.colFormula === cellValue){
+                colFormulaColIndex = sheetColIndex;
+              } else if(constants.colOwner === cellValue){
+                colOwnerColIndex = sheetColIndex;
               } else if (
                 nestedColumn &&
-                new RegExp(nestedColumn).test(cell.value.toString())
+                new RegExp(nestedColumn).test(cellValue)
               ) {
                 if (nestedColumnStartIndex === constants.index) {
                   nestedColumnStartIndex = sheetColIndex;
@@ -690,6 +664,10 @@ export class AppService {
           // Initialize arrays and objects to store previous rows and last row at level
           let previousRows = [];
           let lastRowAtLevel = {};
+          const sharedColumnQueries = [];
+          let colOrder = constants.one;
+          let processedPageId = null;
+          let startColOrderAfterEachPage;
           // Iterate through each row in the sheet
           for (
             let rowIdx = headerRowIndex + constants.one;
@@ -727,13 +705,174 @@ export class AppService {
               rowIdColumnIndex !== constants.index
                 ? row.getCell(rowIdColumnIndex)
                 : null;
-            const rowStatusCell = row.getCell(rowStatusColumnIndex);
             let rowValue = rowIdCell ? rowIdCell.value : null;
-            const rowStatusValue = rowStatusCell ? rowStatusCell.value : null;
-            // Special case for "All Pages" sheet to stop inserting Rows if a Row without Row Id is found
-            if (sheet.name === constants.allPages && rowIdColumnIndex !== constants.index && (rowValue === null || rowValue === undefined)) {
+            // const rowStatusCell = row.getCell(rowStatusColumnIndex);
+            // const pageIdCell = pageIdColumnIndex !== constants.index?row.getCell(pageIdColumnIndex): null;
+            // const pageIdValue = pageIdCell !== null && pageIdCell.value !== null && pageIdCell.value !== undefined 
+            //     ? pageIdCell.value.toString() : null;
+            // const colIdCell = colIdColumnIndex !== constants.index? row.getCell(colIdColumnIndex): null;
+            // const colIdValue = colIdCell !== null && colIdCell.value !== null && colIdCell.value !== undefined 
+            // ? colIdCell.value.toString() : null;
+            // const pageTypeCell = pageTypeIndex !== constants.index? row.getCell(pageTypeIndex): null;
+            // const pageTypeValue = pageTypeCell !== null && pageTypeCell.value !== null && pageTypeCell.value !== undefined 
+            // ? pageTypeCell.value.toString() : null;
+
+            // const rowStatusValue = rowStatusCell ? rowStatusCell.value : null;
+            // const colStatusCell = colStatusColIndex !== constants.index? row.getCell(colStatusColIndex): null;
+            // const colStatusValue = colStatusCell !== null && colStatusCell.value !== null && colStatusCell.value !== undefined 
+            // ? colStatusCell.value.toString() : null;
+
+            // const colCommentCell = colCommentColIndex !== constants.index? row.getCell(colCommentColIndex): null;
+            // const colCommentValue = colCommentCell !== null && colCommentCell.value !== null && colCommentCell.value !== undefined 
+            // ? colCommentCell.value.toString() : null;
+
+            // const colFormulaCell = colFormulaColIndex !== constants.index? row.getCell(colFormulaColIndex): null;
+            // const colFormulaValue = colFormulaCell !== null && colFormulaCell.value !== null && colFormulaCell.value !== undefined 
+            // ? colFormulaCell.value.toString() : null;
+
+            // const colOwnerCell = colOwnerColIndex !== constants.index? row.getCell(colOwnerColIndex): null;
+            // const colOwnerValue = colOwnerCell !== null && colOwnerCell.value !== null && colOwnerCell.value !== undefined 
+            // ? colOwnerCell.value.toString() : null;
+            const rowStatusValue = this.getCellValue(row, rowStatusColumnIndex);
+            const pageIdValue = this.getCellValue(row, pageIdColumnIndex);
+            const colIdValue = this.getCellValue(row, colIdColumnIndex);
+            const pageTypeValue = this.getCellValue(row, pageTypeIndex);
+            const colStatusValue = this.getCellValue(row, colStatusColIndex);
+            const colCommentValue = this.getCellValue(row, colCommentColIndex);
+            const colFormulaValue = this.getCellValue(row, colFormulaColIndex);
+            const colOwnerValue = this.getCellValue(row, colOwnerColIndex);
+            // Check the Page ID is present and Sheet name is "All Pages" sheet then insert the record into tPg table followed by tFormat table.
+            let insertedtFormatIdForPage; 
+            if(pageIdValue !== null && pageIdValue !== undefined && sheet.name === constants.allPages){
+              const inserttPgQuery = {
+                text: constants.inserttPgQuery,
+                values: [pageIdValue]
+              };
+              try{
+                await this.pool.query(inserttPgQuery);
+              }
+              catch(error){
+                console.error(constants.tPgError, error);
+              }
+
+            // Method to Find the Nested Column ID in a page.
+            let nestedColId;
+            for (const colId in colData) {
+              const col = colData[colId];
+              if (col.pageId === pageIdValue && col.colStatus.includes(constants.nested)) {
+                nestedColId = colId;
+                break;
+              }
+            }
+
+            //Insert the tFormat record for the PageID inserted into tPg table
+            const pgObjectType = objectTypeToRowId[constants.page]
+            const inserttFormatForPageQuery = {
+              text: constants.inserttFormatForPageQuery,
+              values: [userId, pgObjectType, pageIdValue, defaultPgExpandLevel, nestedColId]
+            };
+            try{
+              const pagetFormatRecord = await this.pool.query(inserttFormatForPageQuery);
+              insertedtFormatIdForPage = pagetFormatRecord.rows[0].Format;  
+            }
+            catch(error){
+              console.error(constants.tFormatForPageError, error);
+            }
+            }
+            
+             // Check the ColId value is present and sheet name is "all Cols" sheet then insert record into tCol table followed by tFormat table.
+             if(colIdValue !== null && colIdValue !== undefined && sheet.name === constants.allCols){
+              const insertTColQuery = {
+                text: constants.inserttColQuery,
+                values: [colIdValue]
+              };
+            try{
+              await this.pool.query(insertTColQuery);
+            }
+            catch(error){
+              console.error(constants.tPgError, error);
+            }
+            const statusIds = [];
+            // If the Col owner is admin then store the Row ID of admin in colOwner.
+            const colOwner = colOwnerValue === constants.admin ?userId: null;
+            //Find the Col Status Token IDs
+            const cellValues = colStatusValue
+                          .split(constants.semicolon)
+                          .map((val) => val.trim())
+                          .filter(Boolean);
+            if (cellValues.length > 0) {
+            for (const value of cellValues) {
+            statusIds.push(statusesToRowId[value]);
+             }
+            }
+            // Convert the formula into json using the formula type as a key and formula as pair.
+            const colFormula = colFormulaValue !== null ? JSON.stringify({
+              [formulaTypeRowID]: colFormulaValue,
+            }): null;
+
+            // Column comment in json with english Row ID
+            const colCommentJson = colCommentValue !== null ? JSON.stringify({
+              [englishRowId]: colCommentValue,
+            }): null;
+
+            let insertedtFormatIdForCol;
+            // Store the shared column queries to insert the records for each pages in the excel sheet.
+            const colObjectType = objectTypeToRowId[constants.column]
+            if(pageTypeValue === constants.eachPage){
+              const inserttFormatForColQuery = {
+                text: constants.inserttFormatForColQuery,
+                values: [userId, colObjectType, colIdValue, colOrder, colOwner, statusIds, colFormula, colCommentJson]
+              };
+              sharedColumnQueries.push(inserttFormatForColQuery);
+              colOrder++;
+            }
+            // If the Page Id is found then start inserting the shared columns with the container column.
+            if(pageIdValue !== null && pageIdValue !== undefined){
+              // If the new page Id is found on the Page ID column then insert the shared column queries.
+              if(pageIdValue !== processedPageId || processedPageId === null){
+                const updateQuery = constants.updateAnyColumnsIntFormatQuery(constants.container);
+                for (const query of sharedColumnQueries) {
+                  try {
+                    const columntFormatRecord = await this.pool.query(query);
+                    insertedtFormatIdForCol = columntFormatRecord.rows[0].Format;
+                    const updatetFormatColumnQuery = {
+                      text: updateQuery,
+                      values: [pageIdValue, insertedtFormatIdForCol],
+                    };
+                    await this.pool.query(updatetFormatColumnQuery);
+                  } catch (error) {
+                    console.error(constants.tFormatForColumnError, error);
+                  }
+                }
+                // After inserting the shared columns, insert the Page columns
+                const inserttFormatForColQuery = {
+                  text: constants.inserttFormatForColQuery,
+                  values: [userId, colObjectType, colIdValue, colOrder, colOwner, statusIds, colFormula, colCommentJson]
+                };
+                const columntFormatRecord = await this.pool.query(inserttFormatForColQuery);
+                insertedtFormatIdForCol = columntFormatRecord.rows[0].Format;
+                processedPageId = pageIdValue;
+                startColOrderAfterEachPage = colOrder + constants.one;
+              }
+              //If the Page Id is different from the last processed page Id then insert the Page columns without shared columns.
+              else{
+                const inserttFormatForColQuery = {
+                  text: constants.inserttFormatForColQuery,
+                  values: [userId, colObjectType, colIdValue, startColOrderAfterEachPage, colOwner, statusIds, colFormula, colCommentJson]
+                };
+                    const columntFormatRecord = await this.pool.query(inserttFormatForColQuery);
+                    insertedtFormatIdForCol = columntFormatRecord.rows[0].Format;
+                    processedPageId = pageIdValue;
+                    startColOrderAfterEachPage++;
+              }
+            }
+          }
+            // if Row value is N/A then skip the row for tRow insertion.
+            if ( (rowValue !== null && rowValue !== undefined) && rowIdColumnIndex !== constants.index) {
+              if(rowValue.toString() === constants.nonInsertRow)
               continue;
-            } else if (
+            } 
+            if (
               rowIdColumnIndex !== constants.index &&
               (rowValue === null || rowValue === undefined)
             ) {
@@ -861,7 +1000,7 @@ export class AppService {
             }
 
             //Insert tFormat record for every row inserted into tRow table
-            let insertedtFormatId;
+            let insertedtFormatIdForRow;
             const rowObjectType = objectTypeToRowId[constants.tformatColumns.rowId];
             const inserttFormatForRowQuery = {
               text: constants.inserttFormatForRowQuery,
@@ -869,7 +1008,7 @@ export class AppService {
             };
             try {
               const insertedtFormatRecord = await this.pool.query(inserttFormatForRowQuery);
-              insertedtFormatId = insertedtFormatRecord.rows[0].Format;
+              insertedtFormatIdForRow = insertedtFormatRecord.rows[0].Format;
             } catch (error) {
               console.error(constants.tFormatForRowError, error);
               throw error;
@@ -1314,7 +1453,7 @@ export class AppService {
                     }
                   }
                   if (isTformatColumn) {
-                    if(constants.tformatColumns.rowComment === headerCellValue && insertedtFormatId !== null && insertedtFormatId !== undefined){
+                    if(constants.tformatColumns.rowComment === headerCellValue && insertedtFormatIdForRow !== null && insertedtFormatIdForRow !== undefined){
                       const updateQuery = constants.updateAnyColumnsIntFormatQuery(constants.comment);
                       const json = JSON.stringify({
                         [englishRowId]: cellValue,
@@ -1323,7 +1462,7 @@ export class AppService {
                       // Construct the query object for updating tFormat with Comment column
                       const updatetFormatColumnQuery = {
                         text: updateQuery,
-                        values: [json, insertedtFormatId],
+                        values: [json, insertedtFormatIdForRow],
                       };
                       try{
                         await this.pool.query(updatetFormatColumnQuery);
@@ -1331,7 +1470,7 @@ export class AppService {
                         console.error(constants.tFormatUpdateError, constants.comment, error,);
                       }
                     }
-                    if(constants.tformatColumns.rowStatus === headerCellValue && insertedtFormatId !== null && insertedtFormatId !== undefined){
+                    if(constants.tformatColumns.rowStatus === headerCellValue && insertedtFormatIdForRow !== null && insertedtFormatIdForRow !== undefined){
                       const cellValues = cellValue
                             .split(constants.semicolon)
                             .map((val) => val.trim())
@@ -1345,7 +1484,7 @@ export class AppService {
                       // Construct the query object for updating tFormat with Comment column
                       const updatetFormatColumnQuery = {
                         text: updateQuery,
-                        values: [statusIds, insertedtFormatId],
+                        values: [statusIds, insertedtFormatIdForRow],
                       };
                       try{
                         await this.pool.query(updatetFormatColumnQuery);
@@ -1354,9 +1493,63 @@ export class AppService {
                       }
                       }
                     }
-                    if(constants.tformatColumns.rowStatus === headerCellValue && insertedtFormatId !== null && insertedtFormatId !== undefined){
+                    if(constants.tformatColumns.pageOwner === headerCellValue && insertedtFormatIdForPage !== null && insertedtFormatIdForPage !== undefined){
+                      if(cellValue === constants.admin){
+                        const updateQuery = constants.updateAnyColumnsIntFormatQuery(constants.owner);
+                        // Construct the query object for updating tFormat with Page Owner column
+                        const updatetFormatColumnQuery = {
+                          text: updateQuery,
+                          values: [userId, insertedtFormatIdForPage],
+                        };
+                        try{
+                          await this.pool.query(updatetFormatColumnQuery);
+                        }catch(error){
+                          console.error(constants.tFormatUpdateError, constants.status, error,);
+                        }
+                      }
 
                     }
+                    if(constants.tformatColumns.pageComment === headerCellValue && insertedtFormatIdForPage !== null && insertedtFormatIdForPage !== undefined){
+                      const updateQuery = constants.updateAnyColumnsIntFormatQuery(constants.comment);
+                      const json = JSON.stringify({
+                        [englishRowId]: cellValue,
+                      });
+
+                      // Construct the query object for updating tFormat with Comment column
+                      const updatetFormatColumnQuery = {
+                        text: updateQuery,
+                        values: [json, insertedtFormatIdForPage],
+                      };
+                      try{
+                        await this.pool.query(updatetFormatColumnQuery);
+                      }catch(error){
+                        console.error(constants.tFormatUpdateError, constants.comment, error,);
+                      }
+                    }
+                    if(constants.tformatColumns.pageStatus === headerCellValue && insertedtFormatIdForPage !== null && insertedtFormatIdForPage !== undefined){
+                      const cellValues = cellValue
+                            .split(constants.semicolon)
+                            .map((val) => val.trim())
+                            .filter(Boolean);
+                      if (cellValues.length > 0) {
+                        const statusIds = [];
+                        for (const value of cellValues) {
+                          statusIds.push(statusesToRowId[value]);
+                        }
+                      const updateQuery = constants.updateAnyColumnsIntFormatQuery(constants.status);
+                      // Construct the query object for updating tFormat with Comment column
+                      const updatetFormatColumnQuery = {
+                        text: updateQuery,
+                        values: [statusIds, insertedtFormatIdForPage],
+                      };
+                      try{
+                        await this.pool.query(updatetFormatColumnQuery);
+                      }catch(error){
+                        console.error(constants.tFormatUpdateError, constants.status, error,);
+                      }
+                      }
+                    }
+
                   }
                 }
               }
@@ -1508,5 +1701,26 @@ export class AppService {
       }
     }
     return {headerRowIndex, headerColIndex};
+  }
+  private getCellValue(row: any, columnIndex: number): string | null {
+    if (columnIndex === constants.index) {
+      return null;
+    }
+
+    let cellValue = row.getCell(columnIndex).value;
+    if (cellValue !== null && cellValue !== undefined) {
+
+      if (typeof cellValue === constants.object) {
+        if (constants.richText in cellValue) {
+          cellValue = cellValue.richText.map((part: any) => part.text).join('');
+        }
+      } else {
+        cellValue = cellValue.toString();
+      }
+
+      return cellValue;
+    }
+
+    return null;
   }
 }

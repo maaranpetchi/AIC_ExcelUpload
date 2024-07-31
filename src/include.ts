@@ -12,12 +12,15 @@ export const constants = {
   pageType: /Page Type/i,
 
   // All Cols sheet Column headers name
-  colIdPattern: /Col Id\*/i,
-  pageIdPattern: /Page Id/i,
-  colNamePattern: /Col Name\*/i,
+  colId: /Col ID\*/i,
+  pageId: /Page ID/i,
+  colName: /Col Name\*/i,
   colDataType: /Col DataType\*/i,
   colDropDownSource: /Col DropDownSource/i,
   colStatus: 'Col Status',
+  colComment: 'Col Comment',
+  colFormula: 'Col Formula',
+  colOwner: 'Col Owner',
   language: /Language\*/i,
 
   // Columns to insert in tCell and tItem table
@@ -99,11 +102,14 @@ export const constants = {
   allUnits: 'All Units',
   unit: /Unit\*/,
   nonInsertRow: 'N/A',
+  column: 'Column',
+  validateData: 'Validate Data',
 
   //tFormat table columns for dynamic update
   comment: 'Comment',
   status: 'Status',
   owner: 'Owner',
+  container: 'Container',
 
 
   // Sheets to insert into Database
@@ -165,6 +171,7 @@ export const constants = {
   tFormatUpdateError: 'Error updating the tFormat for column ',
   tPgError: 'Error inserting Page Id in tPg table',
   tFormatForPageError: 'Error inserting tFormat record for page ',
+  tFormatForColumnError: 'Error inserting tFormat record for Column ',
 
   //Sql query texts
     disableForeignKeyQuery : `ALTER TABLE "tRow" DISABLE TRIGGER ALL; ALTER TABLE "tCell" DISABLE TRIGGER ALL; ALTER TABLE "tItem" DISABLE TRIGGER ALL; ALTER TABLE "tUser" DISABLE TRIGGER ALL; ALTER TABLE "tFormat" DISABLE TRIGGER ALL;`,
@@ -187,4 +194,5 @@ export const constants = {
     inserttFormatForRowQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "Owner") VALUES($1, $2, $3, $4) RETURNING "Format"`,
     updateAnyColumnsIntFormatQuery : (columnName: string) => { return `UPDATE public."tFormat" SET "${columnName}" = $1 WHERE "Format" = $2;`}, 
     inserttFormatForPageQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "PgExpand", "PgNestedCol") VALUES($1, $2, $3, $4, $5) RETURNING "Format"`,
+    inserttFormatForColQuery: `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "ColOrder", "Owner", "Status", "Formula", "Comment") VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING "Format"`,
 };
