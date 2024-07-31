@@ -98,10 +98,13 @@ export const constants = {
   page: 'Page',
   allUnits: 'All Units',
   unit: /Unit\*/,
+  nonInsertRow: 'N/A',
 
   //tFormat table columns for dynamic update
   comment: 'Comment',
   status: 'Status',
+  owner: 'Owner',
+
 
   // Sheets to insert into Database
   sheetNames: [
@@ -183,5 +186,5 @@ export const constants = {
     inserttUserQuery : `INSERT INTO public."tUser" ("User", "UserType") VALUES($1, $2) RETURNING "User"`,
     inserttFormatForRowQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "Owner") VALUES($1, $2, $3, $4) RETURNING "Format"`,
     updateAnyColumnsIntFormatQuery : (columnName: string) => { return `UPDATE public."tFormat" SET "${columnName}" = $1 WHERE "Format" = $2;`}, 
-    inserttFormatForPageQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "Owner", "PgExpand", "PgNestedCol") VALUES($1, $2, $3, $4, $5, $6) RETURNING "Format"`,
+    inserttFormatForPageQuery : `INSERT INTO public."tFormat" ("User", "ObjectType", "Object", "PgExpand", "PgNestedCol") VALUES($1, $2, $3, $4, $5) RETURNING "Format"`,
 };
