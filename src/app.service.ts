@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Inject, Injectable, UploadedFile } from '@ne
 import { Pool } from 'pg';
 import { constants } from './include';
 import * as ExcelJS from 'exceljs';
+import { Console } from 'console';
 
 @Injectable()
 export class AppService {
@@ -10,6 +11,7 @@ export class AppService {
   
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     try {
+      // Intially disable all foreign key constraints in tables
       await this.pool.query(constants.disableForeignKeyQuery);
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(file.buffer);
@@ -17,36 +19,43 @@ export class AppService {
       const pageIdToNameMap: { [pageName: string]: string } = {};
       const dropdownSourceKeyValuePairs: { [key: string]: any } = {};
       //--Col Id to Col name mapping
-      const colData = {}; // Object to store Col ID, Page Type, Page ID, and Col Name
+      const colData = {}; // Object to store Col ID, Page Type, Page ID, Col Name and Col Dropdown source
 
       //Process All Languages sheet to find the Row Id of English language
       const allLanguagesSheet = sheets.find(
         (sheet) => sheet.name === constants.allLanguages,
       );
-      // Dynamically find the header row
+      // Dynamically find the header row and store the language and row header index of all languages sheet.
       let languageheaderRowIndex = constants.index;
       let languageheaderColIndex = constants.index;
+      let rowHeaderAllLanguageColIndex = constants.index;
       let englishRowId;
-      for (let i = constants.one; i <= allLanguagesSheet.lastRow.number; i++) {
-        const row = allLanguagesSheet.getRow(i);
-        for (let j = constants.one; j <= row.cellCount; j++) {
-          const cell = row.getCell(j);
-          if (cell.value && constants.language.test(cell.value.toString())) {
-            languageheaderRowIndex = i;
-            languageheaderColIndex = j;
-            break;
-          }
-        }
-        if (
-          languageheaderRowIndex !== constants.index &&
-          languageheaderColIndex !== constants.index
-        )
-          break;
-      }
+      const languageHeader = await this.findHeaderRowAndColIndex(allLanguagesSheet, constants.language);
+      languageheaderRowIndex = languageHeader.headerRowIndex;
+      languageheaderColIndex = languageHeader.headerColIndex;
+      rowHeaderAllLanguageColIndex = (await this.findHeaderRowAndColIndex(allLanguagesSheet, constants.rowId)).headerColIndex;
+      // for (let i = constants.one; i <= allLanguagesSheet.lastRow.number; i++) {
+      //   const row = allLanguagesSheet.getRow(i);
+      //   for (let j = constants.one; j <= row.cellCount; j++) {
+      //     const cell = row.getCell(j);
+      //     if (cell.value && constants.language.test(cell.value.toString())) {
+      //       languageheaderRowIndex = i;
+      //       languageheaderColIndex = j;
+      //       break;
+      //     }
+      //   }
+      //   // if the language header index is found then break the loop.
+      //   if (
+      //     languageheaderRowIndex !== constants.index &&
+      //     languageheaderColIndex !== constants.index
+      //   )
+      //     break;
+      // }
       if (
         languageheaderRowIndex !== constants.index &&
         languageheaderColIndex !== constants.index
       ) {
+        // Find the English in language column and fetch the Row Id against the value.
         for (
           let rowIndx = languageheaderRowIndex + constants.one;
           rowIndx <= allLanguagesSheet.lastRow.number;
@@ -57,12 +66,12 @@ export class AppService {
             .value.toString();
           if (rowCell == constants.english) {
             englishRowId = allLanguagesSheet
-              .getCell(rowIndx, languageheaderColIndex - constants.one)
+              .getCell(rowIndx, rowHeaderAllLanguageColIndex)
               .value.toString();
           }
         }
       }
-      // Process the 'All Cols' sheet first
+      // Find the 'All Cols' sheet
       const allColsSheet = sheets.find(
         (sheet) => sheet.name === constants.allCols,
       );
@@ -78,6 +87,7 @@ export class AppService {
      const allUnitsSheet = sheets.find(
       (sheet) => sheet.name === constants.allUnits,
     );
+    // Process the "All Cols" sheet to store the Col ID, Page Type, Page ID, Col Name, COl Data type, Col Dropdown source, Col Status.
       if (!allColsSheet) {
         throw new Error(constants.allColsError);
       }
@@ -90,7 +100,7 @@ export class AppService {
       let colStatusIndex = constants.index;
       let headerRowIndex = constants.index;
 
-      // Find the indices of the headers
+      // Find the indices of the headers in "All Cols" sheet.
       for (
         let rowIndex = constants.one;
         rowIndex <= allColsSheet.lastRow.number;
@@ -132,9 +142,10 @@ export class AppService {
             headerRowIndex = rowIndex;
           }
         }
-        if (headerRowIndex !== constants.index) break; // Exit the loop once the header is found
+        // Exit the loop once the header is found
+        if (headerRowIndex !== constants.index) break; 
       }
-
+      // If any of the index is not found then throw header error.
       if (
         colIdIndex === constants.index ||
         pageTypeIndex === constants.index ||
@@ -163,6 +174,7 @@ export class AppService {
           .getCell(colDropDownSourceIndex)
           .value?.toString();
         const colStatus = row.getCell(colStatusIndex).value?.toString();
+        // Store all the values into an object of Col ID as a key.
         if (colId && colName) {
           colData[colId] = {
             pageType,
@@ -176,7 +188,6 @@ export class AppService {
       }
 
       // Function to store the key value pair of datatype and row ID in all tokens
-
       const dataTypeToRowId = {};
       const objectTypeToRowId = {};
       const statusesToRowId = {};
@@ -185,33 +196,35 @@ export class AppService {
       let rowTypeAllTokensColIndex = constants.index;
 
       // Dynamically find the header row
-      headerRowIndex = constants.index;
-      for (let i = constants.one; i <= allTokensSheet.lastRow.number; i++) {
-        const row = allTokensSheet.getRow(i);
-        for (let j = constants.one; j <= row.cellCount; j++) {
-          const cell = row.getCell(j);
-          if (
-            cell.value &&
-            constants.tokenPattern.test(cell.value.toString())
-          ) {
-            headerRowIndex = i;
-            break;
-          }
-        }
-        if (headerRowIndex !== constants.index) break;
-      }
-      if (headerRowIndex === constants.index) {
+      let allTokensheaderRowIndex = constants.index;
+      allTokensheaderRowIndex = (await this.findHeaderRowAndColIndex(allTokensSheet, constants.tokenPattern)).headerRowIndex;
+      // for (let i = constants.one; i <= allTokensSheet.lastRow.number; i++) {
+      //   const row = allTokensSheet.getRow(i);
+      //   for (let j = constants.one; j <= row.cellCount; j++) {
+      //     const cell = row.getCell(j);
+      //     if (
+      //       cell.value &&
+      //       constants.tokenPattern.test(cell.value.toString())
+      //     ) {
+      //       headerRowIndex = i;
+      //       break;
+      //     }
+      //   }
+      //   if (headerRowIndex !== constants.index) break;
+      // }
+      // If header Row Index is not found then throw header error.
+      if (allTokensheaderRowIndex === constants.index) {
         console.log(constants.headerError + allTokensSheet.name);
       }
 
-      // Find the start and end columns for the merged "Token" header
+      // Find the start and end column index for the merged "Token" header along with Url Type Row ID, DDS type Row ID and Formula Type Row ID.
       let tokenColStartIndex = constants.index;
       let tokenColEndIndex = constants.index;
       let urlTypeRowID = null;
       let ddsTypeRowID = null;
       let formulaTypeRowID = null;
-      if (headerRowIndex !== constants.index) {
-        const headerRow = allTokensSheet.getRow(headerRowIndex);
+      if (allTokensheaderRowIndex !== constants.index) {
+        const headerRow = allTokensSheet.getRow(allTokensheaderRowIndex);
         for (
           let sheetColIndex = constants.one;
           sheetColIndex <= allTokensSheet.lastColumn.number;
@@ -243,7 +256,8 @@ export class AppService {
         }
       }
       //Dynamically find the header row of all labels sheet.
-      let allLabelsHeaderRowIndex;
+      let allLabelsHeaderRowIndex = constants.index;
+
       for (
         let rowIndex = constants.one;
         rowIndex <= allLabelsSheet.lastRow.number;
@@ -267,7 +281,7 @@ export class AppService {
       let labelColEndIndex = constants.index;
       let rowAllLabelsColIndex = constants.index;
       let valueDefaultDataColIndex = constants.index;
-      if (headerRowIndex !== constants.index) {
+      if (allLabelsHeaderRowIndex !== constants.index) {
         const headerRow = allLabelsSheet.getRow(allLabelsHeaderRowIndex);
         for (
           let sheetColIndex = constants.one;
@@ -291,6 +305,7 @@ export class AppService {
             valueDefaultDataColIndex = sheetColIndex;
           }
         }
+        // If any of index is not found then throw error.
         if (
           labelColStartIndex === constants.index ||
           labelColEndIndex === constants.index ||
@@ -300,9 +315,9 @@ export class AppService {
           console.log(constants.allLabelsIndexError + allLabelsSheet.name);
         }
       }
-      //Find and Store the URL & ddsType Row ID 
+      //Find and Store the URL, Validate Data, Formula Type & ddsType Row ID 
       for (
-        let i = headerRowIndex + constants.one;
+        let i = allTokensheaderRowIndex + constants.one;
         i <= allTokensSheet.lastRow.number;
         i++
       ) {
@@ -323,7 +338,7 @@ export class AppService {
           }
         }
       }
-      // Identify the "DataType", "UserType" and "Object" row dynamically within the "Token" header columns
+      // Identify the "DataType", "UserType", "Statuses" and "Object" row dynamically within the "Token" header columns
       let dataTypeRowIndex = constants.index;
       let dataTypeColIndex = constants.index;
       let userTypeRowIndex = constants.index;
@@ -336,7 +351,7 @@ export class AppService {
         tokenColEndIndex !== constants.index
       ) {
         for (
-          let i = headerRowIndex + constants.one;
+          let i = allTokensheaderRowIndex + constants.one;
           i <= allTokensSheet.lastRow.number;
           i++
         ) {
@@ -359,6 +374,7 @@ export class AppService {
               statuesColIndex = j;
             }
           }
+          // If all the index is found then break the loop.
           if (
             dataTypeRowIndex !== constants.index &&
             dataTypeColIndex !== constants.index &&
@@ -370,6 +386,7 @@ export class AppService {
           )
             break;
         }
+        // If any of the index is not found then throw error.
         if (dataTypeRowIndex === constants.index || 
           userTypeRowIndex === constants.index || 
           objectTypeRowIndex === constants.index || 
@@ -379,8 +396,7 @@ export class AppService {
           console.log(constants.datatypeError + allTokensSheet.name);
         }
       }
-      let shouldBreak = false;
-      // Collect values under the "Token" header after the "DataType" row
+      // Collect values from the "Token" header under the "DataType" row.
       if (
         dataTypeRowIndex !== constants.index &&
         tokenColStartIndex !== constants.index &&
@@ -394,12 +410,12 @@ export class AppService {
           tokenColEndIndex,
           rowAllTokensColIndex
         );
-        // Create key-value pairs with RowType as key and RowId as value
+        // Create key-value pairs with RowType as key and RowId as value.
         for (let i = constants.zero; i < dataTypeResult.value.length; i++) {
           dataTypeToRowId[dataTypeResult.value[i]] = dataTypeResult.rowIdOfValue[i];
         }
       }
-          // Find the values under Object to store as key value pair for tFormat.ObjectType
+          // Find the values under Object to store as key value pair for tFormat.ObjectType.
           if (
             objectTypeRowIndex !== constants.index &&
             objectTypeColIndex !== constants.index &&
@@ -414,13 +430,13 @@ export class AppService {
               tokenColEndIndex,
               rowAllTokensColIndex
             );
-            // Create key-value pairs with Object as key and RowId as value
+            // Create key-value pairs with Object as key and RowId as value.
             for (let i = 0; i < objectTypeResult.value.length; i++) {
               objectTypeToRowId[objectTypeResult.value[i]] = objectTypeResult.rowIdOfValue[i];
             }
       }
 
-       // Find the values under Statuses to store as key value pair for tFormat.ObjectType
+       // Find the values under Statuses to store as key value pair for tFormat.Status.
       if (
         statuesRowIndex !== constants.index &&
         statuesColIndex !== constants.index &&
@@ -435,11 +451,12 @@ export class AppService {
           tokenColEndIndex,
           rowAllTokensColIndex
         );
+        // Create key-value pairs with Status as key and RowId as value.
         for (let i = 0; i < statusesResult.value.length; i++) {
           statusesToRowId[statusesResult.value[i]] = statusesResult.rowIdOfValue[i];
         }
     }
-      //Find the Admin and default expand level in all labels sheet with the default data
+      //Find the index of Admin and default page expand level in all labels sheet with the default data.
       let adminRowIndex = constants.index;
       let defaultExpandLevelRowIndex = constants.index;
       let foundAdmin = false;
@@ -472,6 +489,7 @@ export class AppService {
       const defaultPgExpandLevel = allLabelsSheet.getCell(defaultExpandLevelRowIndex, valueDefaultDataColIndex).value.toString();
 
       let userTypeRowId = null;
+      let adminUser;
 
       // Check all tokens sheet for the Default User type
       for (let i = userTypeRowIndex; i <= allTokensSheet.lastRow.number; i++) {
@@ -494,7 +512,7 @@ export class AppService {
           values: [userId, userTypeRowId]
         };
         const adminUserRecord = await this.pool.query(inserttUserQuery);
-        const adminUser = adminUserRecord.rows[0].User;
+        adminUser = adminUserRecord.rows[0].User;
       }
       else{
         console.log(constants.userNotFoundError);
@@ -508,7 +526,9 @@ export class AppService {
       };
       await this.pool.query(insertDefaultTRowQuery);
 
+      // Process through all the sheets in the Excel file
       for (const sheet of sheets) {
+        // Process only the mentioned sheets in include file
         if (constants.sheetNames.includes(sheet.name)) {
           console.log(constants.process + sheet.name);
 
@@ -590,19 +610,20 @@ export class AppService {
                 break;
               }
             }
+            // If Header Row Index is found then break the loop.
             if (headerRowIndex !== constants.index) break;
           }
 
-          // Handle error if headerRowIndex is still index constant
+          // Log error if headerRowIndex is still index constant.
           if (headerRowIndex === constants.index) {
             console.log(constants.headerError + sheet.name);
             continue; // Skip to the next sheet
           }
 
-          // Retrieve header row
+          // Retrieve header row using header row index.
           const headerRow = sheet.getRow(headerRowIndex);
 
-          // Initialize variables for column indices and nested column
+          // Initialize variables for column indices and nested column.
           let rowIdColumnIndex = constants.index;
           let rowStatusColumnIndex = constants.index;
           let nestedColumnStartIndex = constants.index;
@@ -655,7 +676,7 @@ export class AppService {
             }
           }
 
-          // Handle error if rowStatusColumnIndex is still index constant
+          // Log error if rowStatusColumnIndex is still index constant
           if (rowStatusColumnIndex === constants.index) {
             console.log(constants.rowStatusError + sheet.name);
             continue; // Skip to the next sheet
@@ -695,12 +716,12 @@ export class AppService {
               }
             }
 
-            // Skip empty rows
+            // Skip the empty rows
             if (isRowEmpty) {
               continue;
             }
 
-            // Retrieve row ID and row status values
+            // Retrieve Row ID, Row Status, Page ID, Col ID, Page Type, Col Status, Col Comment, Col Formula, Col Owner values
             const rowIdCell =
               rowIdColumnIndex !== constants.index
                 ? row.getCell(rowIdColumnIndex)
@@ -714,7 +735,7 @@ export class AppService {
             const colCommentValue = this.getCellValue(row, colCommentColIndex);
             const colFormulaValue = this.getCellValue(row, colFormulaColIndex);
             const colOwnerValue = this.getCellValue(row, colOwnerColIndex);
-            // Check the Page ID is present and Sheet name is "All Pages" sheet then insert the record into tPg table followed by tFormat table.
+            // Check the Page ID is present and Sheet name is "All Pages" then insert the record into tPg table followed by tFormat table.
             let insertedtFormatIdForPage; 
             if(pageIdValue !== null && pageIdValue !== undefined && sheet.name === constants.allPages){
               const inserttPgQuery = {
@@ -742,7 +763,7 @@ export class AppService {
             const pgObjectType = objectTypeToRowId[constants.page]
             const inserttFormatForPageQuery = {
               text: constants.inserttFormatForPageQuery,
-              values: [userId, pgObjectType, pageIdValue, defaultPgExpandLevel, nestedColId]
+              values: [adminUser, pgObjectType, pageIdValue, defaultPgExpandLevel, nestedColId]
             };
             try{
               const pagetFormatRecord = await this.pool.query(inserttFormatForPageQuery);
@@ -753,7 +774,7 @@ export class AppService {
             }
             }
             
-             // Check the ColId value is present and sheet name is "all Cols" sheet then insert record into tCol table followed by tFormat table.
+             // Check the ColId value is present and sheet name is "all Cols" then insert record into tCol table followed by tFormat table.
              if(colIdValue !== null && colIdValue !== undefined && sheet.name === constants.allCols){
               const insertTColQuery = {
                 text: constants.inserttColQuery,
@@ -766,9 +787,9 @@ export class AppService {
               console.error(constants.tPgError, error);
             }
             const statusIds = [];
-            // If the Col owner is admin then store the Row ID of admin in colOwner.
-            const colOwner = colOwnerValue === constants.admin ?userId: null;
-            //Find the Col Status Token IDs
+            // If the Col owner is admin then store the Row ID of admin in ColOwner.
+            const colOwner = colOwnerValue === constants.admin ?adminUser: null;
+            //Find the Col Status Token IDs by splitting the Items in the cell with semicolon.
             const cellValues = colStatusValue
                           .split(constants.semicolon)
                           .map((val) => val.trim())
@@ -794,7 +815,7 @@ export class AppService {
             if(pageTypeValue === constants.eachPage){
               const inserttFormatForColQuery = {
                 text: constants.inserttFormatForColQuery,
-                values: [userId, colObjectType, colIdValue, colOrder, colOwner, statusIds, colFormula, colCommentJson]
+                values: [adminUser, colObjectType, colIdValue, colOrder, colOwner, statusIds, colFormula, colCommentJson]
               };
               sharedColumnQueries.push(inserttFormatForColQuery);
               colOrder++;
@@ -820,7 +841,7 @@ export class AppService {
                 // After inserting the shared columns, insert the Page columns
                 const inserttFormatForColQuery = {
                   text: constants.inserttFormatForColQuery,
-                  values: [userId, colObjectType, colIdValue, colOrder, colOwner, statusIds, colFormula, colCommentJson]
+                  values: [adminUser, colObjectType, colIdValue, colOrder, colOwner, statusIds, colFormula, colCommentJson]
                 };
                 const columntFormatRecord = await this.pool.query(inserttFormatForColQuery);
                 insertedtFormatIdForCol = columntFormatRecord.rows[0].Format;
@@ -831,7 +852,7 @@ export class AppService {
               else{
                 const inserttFormatForColQuery = {
                   text: constants.inserttFormatForColQuery,
-                  values: [userId, colObjectType, colIdValue, startColOrderAfterEachPage, colOwner, statusIds, colFormula, colCommentJson]
+                  values: [adminUser, colObjectType, colIdValue, startColOrderAfterEachPage, colOwner, statusIds, colFormula, colCommentJson]
                 };
                     const columntFormatRecord = await this.pool.query(inserttFormatForColQuery);
                     insertedtFormatIdForCol = columntFormatRecord.rows[0].Format;
@@ -845,6 +866,7 @@ export class AppService {
               if(rowValue.toString() === constants.nonInsertRow)
               continue;
             } 
+            // If the Row column is exist and no Row value then generate the Row value.
             if (
               rowIdColumnIndex !== constants.index &&
               (rowValue === null || rowValue === undefined)
@@ -854,13 +876,16 @@ export class AppService {
             }
             // Determine row level based on row status and nested columns
             let rowLevel = constants.one;
+            // If the Row status column contains section head then Row level is 0.
             if (
               rowStatusValue !== null &&
               rowStatusValue !== undefined &&
               rowStatusValue.toString() === constants.sectionHead
             ) {
               rowLevel = constants.zero;
-            } else if (
+            } 
+            // Else count the cells in the nested column present in the iterating sheet.
+            else if (
               nestedColumnStartIndex !== constants.index &&
               nestedColumnEndIndex !== constants.index
             ) {
@@ -892,7 +917,7 @@ export class AppService {
                 break;
               }
             }
-
+            // Store the Parent Row Id with the Row Level.
             const lastRowKey = `${parentRowId}-${rowLevel}`;
             if (lastRowAtLevel[lastRowKey]) {
               siblingRowId = lastRowAtLevel[lastRowKey].id;
@@ -900,7 +925,7 @@ export class AppService {
             let newRowId = null;
             let savedRowEntity;
 
-            // Create a new row entity based on row value or generate a new row value
+            // Insert the row based on row value or generate a new row value if there is no Row column.
             if (rowValue !== null && rowValue !== undefined) {
               const inserttRowQuery = {
                 text: constants.inserttRowQuery,
@@ -937,11 +962,12 @@ export class AppService {
                 dropdownSourceKeyValuePairs[row.getCell(nestedColumnStartIndex).value.toString()] = savedRowEntity;
                 // console.log(dropdownSourceKeyValuePairs);
               }
-              // Handle case where newRowId is undefined
+              // Log error when newRowId is undefined
               if (newRowId === undefined) {
                 console.error(constants.emptyRowError);
                 continue;
               }
+              // Update the sibling Row ID for inserted Row.
               const updateSiblingRowIntRowQuery = {
                 text: constants.updateSiblingRowIntRowQuery,
                 values: [newRowId, siblingRowId],
@@ -977,7 +1003,7 @@ export class AppService {
             const rowObjectType = objectTypeToRowId[constants.tformatColumns.rowId];
             const inserttFormatForRowQuery = {
               text: constants.inserttFormatForRowQuery,
-              values: [userId, rowObjectType, savedRowEntity, userId],
+              values: [adminUser, rowObjectType, savedRowEntity, adminUser],
             };
             try {
               const insertedtFormatRecord = await this.pool.query(inserttFormatForRowQuery);
@@ -1028,7 +1054,7 @@ export class AppService {
                     constants.index,
                   ); // Remove the last character
                 }
-
+                // Check the tItemColumns in include file contains the header Cell value.
                 if (headerCellValue != null || headerCellValue != undefined) {
                   for (const key in constants.titemColumns) {
                     if (constants.titemColumns[key] === headerCellValue) {
@@ -1036,6 +1062,7 @@ export class AppService {
                       break;
                     }
                   }
+                  // Check the tFormatColumns in include file contains the header Cell value.
                   for (const key in constants.tformatColumns) {
                     if (constants.tformatColumns[key] === headerCellValue) {
                       isTformatColumn = true;
@@ -1043,6 +1070,7 @@ export class AppService {
                     }
                   }
                   if (isTitemColumn) {
+                    // Validate the headers with the Col name in "All Cols" sheet and the page Id matches or Page type is each page.
                     for (const key in colData) {
                       if (
                         colData[key].colName === headerCellValue &&
@@ -1064,6 +1092,7 @@ export class AppService {
                     else {
                       rowEntityValue = savedRowEntity;
                     }
+                    // Insert the Col ID and Row ID into tCell table 
                     if (colID != null && savedRowEntity != null) {
                       const inserttCellQuery = {
                         text: constants.inserttCellQuery,
@@ -1189,7 +1218,7 @@ export class AppService {
                                       {
                                         const inserttFormatForItemQuery = {
                                           text: constants.inserttFormatForItemQuery,
-                                          values: [userId,itemObjectType, insertedItemId, itemOrder, userId],
+                                          values: [adminUser,itemObjectType, insertedItemId, itemOrder, adminUser],
                                         }
                                         await this.pool.query(inserttFormatForItemQuery);
                                       }
@@ -1216,6 +1245,7 @@ export class AppService {
                           constants.titemColumns.pageId === headerCellValue ||
                           constants.titemColumns.colId === headerCellValue
                         ) {
+                          // Find the Row Id of datatype from dataTypeToRowId
                           const dataType = dataTypeToRowId[colDataType];
                           try {
                             const itemIds = [];
@@ -1238,6 +1268,7 @@ export class AppService {
                             console.error(constants.itemIdError, error);
                           }
                         }
+                        // If the header cell value matches the Release date then insert the value in DateTime column in tItem table
                         if (
                           constants.titemColumns.releaseDate === headerCellValue
                         ) {
@@ -1263,6 +1294,7 @@ export class AppService {
                             console.error(constants.itemIdError, error);
                           }
                         }
+                        // If the headerCell value is matches the Unit factor column name then insert the value into number column in tItem table.
                         if (constants.titemColumns.unitFactor === headerCellValue) {
                           const dataType = dataTypeToRowId[colDataType];
                           try {
@@ -1290,6 +1322,7 @@ export class AppService {
                             );
                           }
                         }
+                        // If headerCell value matches the Col DropDown source or Value Dropdown Source column then insert the Dropdown source Token ID from DDS pages.
                         if (
                           constants.titemColumns.colDropDownSource === headerCellValue ||
                           constants.titemColumns.valueDropdownSource === headerCellValue
@@ -1408,7 +1441,7 @@ export class AppService {
                                 {
                                   const inserttFormatForItemQuery = {
                                     text: constants.inserttFormatForItemQuery,
-                                    values: [userId,itemObjectType, insertedItemId, itemOrder, userId],
+                                    values: [adminUser,itemObjectType, insertedItemId, itemOrder, adminUser],
                                   }
                                   await this.pool.query(inserttFormatForItemQuery);
                                 }
@@ -1455,7 +1488,7 @@ export class AppService {
                         [englishRowId]: cellValue,
                       });
 
-                      // Construct the query object for updating tFormat with Comment column
+                      // Update the tFormat with the Row commnet on tFormat with Comment column
                       const updatetFormatColumnQuery = {
                         text: updateQuery,
                         values: [json, insertedtFormatIdForRow],
@@ -1477,7 +1510,7 @@ export class AppService {
                           statusIds.push(statusesToRowId[value]);
                         }
                       const updateQuery = constants.updateAnyColumnsIntFormatQuery(constants.status);
-                      // Construct the query object for updating tFormat with Comment column
+                      // Update the tFormat with the Row Status on tFormat with Status column
                       const updatetFormatColumnQuery = {
                         text: updateQuery,
                         values: [statusIds, insertedtFormatIdForRow],
@@ -1492,10 +1525,10 @@ export class AppService {
                     if(constants.tformatColumns.pageOwner === headerCellValue && insertedtFormatIdForPage !== null && insertedtFormatIdForPage !== undefined){
                       if(cellValue === constants.admin){
                         const updateQuery = constants.updateAnyColumnsIntFormatQuery(constants.owner);
-                        // Construct the query object for updating tFormat with Page Owner column
-                        const updatetFormatColumnQuery = {
+                      // Update the tFormat with the page owner on tFormat with Owner column
+                      const updatetFormatColumnQuery = {
                           text: updateQuery,
-                          values: [userId, insertedtFormatIdForPage],
+                          values: [adminUser, insertedtFormatIdForPage],
                         };
                         try{
                           await this.pool.query(updatetFormatColumnQuery);
@@ -1511,7 +1544,7 @@ export class AppService {
                         [englishRowId]: cellValue,
                       });
 
-                      // Construct the query object for updating tFormat with Comment column
+                      // Update the tFormat with the Page commnet on tFormat with Comment column
                       const updatetFormatColumnQuery = {
                         text: updateQuery,
                         values: [json, insertedtFormatIdForPage],
@@ -1545,10 +1578,11 @@ export class AppService {
                       }
                       }
                     }
+                    // Insert the Cell Id of the Default Cell into tFormat.Default when the header cell value matches the Value Data type or Col Data type.
                     if((constants.tformatColumns.valueDefaultData === headerCellValue || constants.tformatColumns.colDefaultData === headerCellValue) && savedCellEntity !== null){
                       const inserttFormatForDefaultColQuery = {
                         text: constants.inserttFormatForDefaultColQuery,
-                        values: [userId, cellObjectType, savedCellEntity.Cell, savedCellEntity.Cell, userId],
+                        values: [adminUser, cellObjectType, savedCellEntity.Cell, savedCellEntity.Cell, adminUser],
                       }
                   try{
                       await this.pool.query(inserttFormatForDefaultColQuery);
@@ -1630,7 +1664,7 @@ export class AppService {
       throw error;
     }
   }
-  // Method to Insert tItem table into JSON column.
+  // Method to Insert record into tItem table with JSON column.
   async insertItemWithJson(dataType: number, json: string) {
     const insertItemWithJsonQuery = {
       text: constants.inserttItemWithJsonQuery,
@@ -1692,6 +1726,7 @@ export class AppService {
     }
     return {value, rowIdOfValue};
   }
+  // Method to find the Header Row and column index with input of sheet name and header name.
   async findHeaderRowAndColIndex(sheet:any, header: any){
     let headerRowIndex;
     let headerColIndex;
@@ -1708,6 +1743,7 @@ export class AppService {
     }
     return {headerRowIndex, headerColIndex};
   }
+  // Method to fetch the value from the row using the row and Column Index.
   private getCellValue(row: any, columnIndex: number): string | null {
     if (columnIndex === constants.index) {
       return null;
